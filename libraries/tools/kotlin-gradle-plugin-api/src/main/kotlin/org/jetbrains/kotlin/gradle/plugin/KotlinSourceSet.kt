@@ -40,6 +40,5 @@ interface KotlinSourceSet : Named, HasKotlinDependencies {
         const val COMMON_TEST_SOURCE_SET_NAME = "commonTest"
     }
 
-    val customSourceFilesExtensions: List<String>
-    fun customSourceFilesExtensions(vararg extensions: String)
+    val customSourceFilesExtensions: Iterable<String> // lazy iterable expected
 }

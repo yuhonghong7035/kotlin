@@ -93,20 +93,15 @@ class DefaultKotlinSourceSet(
 
     override fun toString(): String = "source set $name"
 
-    private val knownCustomFileExtensions = mutableListOf<String>()
-
-    override val customSourceFilesExtensions: List<String> get() = knownCustomFileExtensions
-
-    override fun customSourceFilesExtensions(vararg extensions: String) {
-        val newExtensions = extensions.filter { extension ->
-            knownCustomFileExtensions.none { extension.equals(it, ignoreCase = true) }
-                    && DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS.none { extension.equals(it, ignoreCase = true) }
-        }.toList()
-        if (newExtensions.isNotEmpty()) {
-            knownCustomFileExtensions.addAll(newExtensions)
-            kotlin.filter.include(newExtensions.map { "**/*.$it" })
+    override val customSourceFilesExtensions: Iterable<String>
+        get() = Iterable {
+            kotlin.filter.includes.mapNotNull { pattern ->
+                pattern.substringAfterLast('.').takeUnless { extension ->
+                    DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS.any { extension.equals(it, ignoreCase = true) }
+                            || extension.any { it == '\\' || it == '/' }
+                }
+            }.iterator()
         }
-    }
 }
 
 private fun KotlinSourceSet.checkForCircularDependencies(): Unit {
