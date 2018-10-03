@@ -26,7 +26,12 @@ import com.intellij.util.containers.ContainerUtil
 import org.jetbrains.kotlin.asJava.getJvmSignatureDiagnostics
 import org.jetbrains.kotlin.checkers.BaseDiagnosticsTest.TestFile
 import org.jetbrains.kotlin.checkers.BaseDiagnosticsTest.TestModule
-import org.jetbrains.kotlin.checkers.ActualDiagnostic
+import org.jetbrains.kotlin.checkers.diagnostics.ActualDiagnostic
+import org.jetbrains.kotlin.checkers.diagnostics.PositionalTextDiagnostic
+import org.jetbrains.kotlin.checkers.diagnostics.TextDiagnostic
+import org.jetbrains.kotlin.checkers.diagnostics.factories.DebugInfoDiagnosticFactory0
+import org.jetbrains.kotlin.checkers.diagnostics.factories.SyntaxErrorDiagnosticFactory
+import org.jetbrains.kotlin.checkers.utils.CheckerTestUtil
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.config.LanguageFeature
@@ -129,8 +134,8 @@ abstract class BaseDiagnosticsTest : KotlinMultiFileTestWithJava<TestModule, Tes
         textWithMarkers: String,
         val directives: Map<String, String>
     ) {
-        private val diagnosedRanges: List<DiagnosedRange> = ArrayList()
-        val actualDiagnostics: MutableList<ActualDiagnostic> = ArrayList()
+        private val diagnosedRanges: MutableList<DiagnosedRange> = mutableListOf()
+        val actualDiagnostics: MutableList<ActualDiagnostic> = mutableListOf()
         val expectedText: String
         val clearText: String
         private val createKtFile: Lazy<KtFile?>
@@ -141,7 +146,7 @@ abstract class BaseDiagnosticsTest : KotlinMultiFileTestWithJava<TestModule, Tes
         val declareFlexibleType: Boolean
         val checkLazyLog: Boolean
         private val markDynamicCalls: Boolean
-        val dynamicCallDescriptors: List<DeclarationDescriptor> = ArrayList()
+        val dynamicCallDescriptors: MutableList<DeclarationDescriptor> = mutableListOf()
         val withNewInferenceDirective: Boolean
         val newInferenceEnabled: Boolean
 
@@ -161,7 +166,7 @@ abstract class BaseDiagnosticsTest : KotlinMultiFileTestWithJava<TestModule, Tes
                 this.expectedText = this.clearText
             } else {
                 this.expectedText = textWithMarkers
-                this.clearText = CheckerTestUtil.parseDiagnosedRanges(addExtras(expectedText), diagnosedRanges.toMutableList())
+                this.clearText = CheckerTestUtil.parseDiagnosedRanges(addExtras(expectedText), diagnosedRanges)
                 this.createKtFile = lazy { TestCheckerUtil.createCheckAndReturnPsiFile(fileName, clearText, project) }
             }
         }
@@ -242,7 +247,7 @@ abstract class BaseDiagnosticsTest : KotlinMultiFileTestWithJava<TestModule, Tes
                 implementingModulesBindings,
                 ktFile,
                 markDynamicCalls,
-                dynamicCallDescriptors.toMutableList(),
+                dynamicCallDescriptors,
                 newInferenceEnabled,
                 languageVersionSettings,
                 container.dataFlowValueFactory,
@@ -304,11 +309,18 @@ abstract class BaseDiagnosticsTest : KotlinMultiFileTestWithJava<TestModule, Tes
 
                 fun updateUncheckedDiagnostics(diagnostic: TextDiagnostic, start: Int, end: Int) {
                     diagnostic.enhanceInferenceCompatibility(invertedInferenceCompatibilityOfTest)
-                    uncheckedDiagnostics.add(PositionalTextDiagnostic(diagnostic, start, end))
+                    uncheckedDiagnostics.add(
+                        PositionalTextDiagnostic(
+                            diagnostic,
+                            start,
+                            end
+                        )
+                    )
                 }
             })
 
-            actualText.append(CheckerTestUtil.addDiagnosticMarkersToText(
+            actualText.append(
+                CheckerTestUtil.addDiagnosticMarkersToText(
                     ktFile, diagnostics, diagnosticToExpectedDiagnostic, { file -> file.text }, uncheckedDiagnostics, withNewInferenceDirective)
             )
 

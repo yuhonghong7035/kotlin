@@ -22,7 +22,7 @@ import com.intellij.openapi.util.Pair;
 import com.intellij.psi.PsiErrorElement;
 import com.intellij.util.ArrayUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.kotlin.checkers.CheckerTestUtil;
+import org.jetbrains.kotlin.checkers.utils.CheckerTestUtil;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.resolve.AnalyzingUtils;
 import org.jetbrains.kotlin.test.KotlinTestUtils;
