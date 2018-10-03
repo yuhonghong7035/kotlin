@@ -16,4 +16,4 @@
 
 package org.jetbrains.kotlin.checkers
 
-data class PositionalTextDiagnostic(val diagnostic: CheckerTestUtil.TextDiagnostic, val start: Int, val end: Int)
+data class PositionalTextDiagnostic(val diagnostic: TextDiagnostic, val start: Int, val end: Int)

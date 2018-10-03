@@ -19,7 +19,6 @@ package org.jetbrains.kotlin.diagnostics.rendering;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.checkers.CheckerTestUtil;
 import org.jetbrains.kotlin.diagnostics.*;
 
 import java.util.HashMap;

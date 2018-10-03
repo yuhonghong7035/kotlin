@@ -67,7 +67,7 @@ abstract class AbstractBlackBoxCodegenTestSpec : AbstractBlackBoxCodegenTest() {
 
         includeHelpers(wholeFile, files)
 
-        TestExceptionsComparator(wholeFile).runAndCompareWithExpected({ specTest.unexpectedBehavior }) {
+        TestExceptionsComparator(wholeFile).runAndCompareWithExpected({ Pair(specTest.unexpectedBehavior, null) }) {
             super.doMultiFileTest(wholeFile, files, javaFilesDir)
         }
     }
