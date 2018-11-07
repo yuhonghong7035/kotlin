@@ -57,38 +57,6 @@ public abstract class AbstractParsingTest extends KtParsingTestCase {
         super(".", "kt", new KotlinParserDefinition());
     }
 
-    private static void checkPsiGetters(KtElement elem) throws Throwable {
-        Method[] methods = elem.getClass().getDeclaredMethods();
-        for (Method method : methods) {
-            String methodName = method.getName();
-            if (!methodName.startsWith("get") && !methodName.startsWith("find") ||
-                methodName.equals("getReference") ||
-                methodName.equals("getReferences") ||
-                methodName.equals("getUseScope") ||
-                methodName.equals("getPresentation")) {
-                continue;
-            }
-
-            if (!Modifier.isPublic(method.getModifiers())) continue;
-            if (method.getParameterTypes().length > 0) continue;
-
-            Class<?> declaringClass = method.getDeclaringClass();
-            if (!declaringClass.getName().startsWith("org.jetbrains.kotlin")) continue;
-
-            Object result = method.invoke(elem);
-            if (result == null) {
-                for (Annotation annotation : method.getDeclaredAnnotations()) {
-                    if (annotation instanceof IfNotParsed) {
-                        assertNotNull(
-                                "Incomplete operation in parsed OK test, method " + methodName +
-                                " in " + declaringClass.getSimpleName() + " returns null. Element text: \n" + elem.getText(),
-                                PsiTreeUtil.findChildOfType(elem, PsiErrorElement.class));
-                    }
-                }
-            }
-        }
-    }
-
     protected void doParsingTest(@NotNull String filePath) throws Exception {
         doBaseTest(filePath, KtNodeTypes.KT_FILE, null);
     }

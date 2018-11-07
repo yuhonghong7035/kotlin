@@ -34,19 +34,21 @@ import kotlin.collections.CollectionsKt;
 import kotlin.text.StringsKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.config.LanguageVersionSettings;
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor;
-import org.jetbrains.kotlin.diagnostics.Diagnostic;
-import org.jetbrains.kotlin.diagnostics.DiagnosticFactory;
-import org.jetbrains.kotlin.diagnostics.Severity;
+import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl;
+import org.jetbrains.kotlin.diagnostics.*;
 import org.jetbrains.kotlin.diagnostics.rendering.AbstractDiagnosticWithParametersRenderer;
 import org.jetbrains.kotlin.diagnostics.rendering.DefaultErrorMessages;
 import org.jetbrains.kotlin.diagnostics.rendering.DiagnosticRenderer;
+import org.jetbrains.kotlin.diagnostics.rendering.Renderers;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtReferenceExpression;
 import org.jetbrains.kotlin.resolve.AnalyzingUtils;
 import org.jetbrains.kotlin.resolve.BindingContext;
 import org.jetbrains.kotlin.resolve.MultiTargetPlatform;
+import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactory;
 import org.jetbrains.kotlin.util.slicedMap.WritableSlice;
 
 import java.util.*;
@@ -97,10 +99,22 @@ public class CheckerTestUtil {
             @NotNull PsiElement root,
             boolean markDynamicCalls,
             @Nullable List<DeclarationDescriptor> dynamicCallDescriptors,
-            boolean withNewInference
+            boolean withNewInference,
+            LanguageVersionSettings languageVersionSettings,
+            DataFlowValueFactory dataFlowValueFactory,
+            ModuleDescriptorImpl moduleDescriptor
     ) {
-        List<ActualDiagnostic> result =
-                getDiagnosticsIncludingSyntaxErrors(bindingContext, root, markDynamicCalls, dynamicCallDescriptors, null, withNewInference);
+        List<ActualDiagnostic> result = getDiagnosticsIncludingSyntaxErrors(
+                bindingContext,
+                root,
+                markDynamicCalls,
+                dynamicCallDescriptors,
+                null,
+                withNewInference,
+                languageVersionSettings,
+                dataFlowValueFactory,
+                moduleDescriptor
+        );
 
         List<Pair<MultiTargetPlatform, BindingContext>> sortedBindings = CollectionsKt.sortedWith(
                 implementingModulesBindings,
@@ -111,10 +125,19 @@ public class CheckerTestUtil {
             MultiTargetPlatform platform = binding.getFirst();
             assert platform instanceof MultiTargetPlatform.Specific : "Implementing module must have a specific platform: " + platform;
 
-            result.addAll(getDiagnosticsIncludingSyntaxErrors(
-                    binding.getSecond(), root, markDynamicCalls, dynamicCallDescriptors,
-                    ((MultiTargetPlatform.Specific) platform).getPlatform(), withNewInference
-            ));
+            result.addAll(
+                    getDiagnosticsIncludingSyntaxErrors(
+                            binding.getSecond(),
+                            root,
+                            markDynamicCalls,
+                            dynamicCallDescriptors,
+                            ((MultiTargetPlatform.Specific) platform).getPlatform(),
+                            withNewInference,
+                            languageVersionSettings,
+                            dataFlowValueFactory,
+                            moduleDescriptor
+                    )
+            );
         }
 
         return result;
@@ -127,7 +150,10 @@ public class CheckerTestUtil {
             boolean markDynamicCalls,
             @Nullable List<DeclarationDescriptor> dynamicCallDescriptors,
             @Nullable String platform,
-            boolean withNewInference
+            boolean withNewInference,
+            LanguageVersionSettings languageVersionSettings,
+            DataFlowValueFactory dataFlowValueFactory,
+            ModuleDescriptorImpl moduleDescriptor
     ) {
         List<ActualDiagnostic> diagnostics = new ArrayList<>();
         for (Diagnostic diagnostic : bindingContext.getDiagnostics().all()) {
@@ -140,7 +166,19 @@ public class CheckerTestUtil {
             diagnostics.add(new ActualDiagnostic(new SyntaxErrorDiagnostic(errorElement), platform, withNewInference));
         }
 
-        diagnostics.addAll(getDebugInfoDiagnostics(root, bindingContext, markDynamicCalls, dynamicCallDescriptors, platform, withNewInference));
+        diagnostics.addAll(
+                getDebugInfoDiagnostics(
+                        root,
+                        bindingContext,
+                        markDynamicCalls,
+                        dynamicCallDescriptors,
+                        platform,
+                        withNewInference,
+                        languageVersionSettings,
+                        dataFlowValueFactory,
+                        moduleDescriptor
+                )
+        );
         return diagnostics;
     }
 
@@ -152,24 +190,27 @@ public class CheckerTestUtil {
             boolean markDynamicCalls,
             @Nullable List<DeclarationDescriptor> dynamicCallDescriptors,
             @Nullable String platform,
-            boolean withNewInference
+            boolean withNewInference,
+            LanguageVersionSettings languageVersionSettings,
+            DataFlowValueFactory dataFlowValueFactory,
+            ModuleDescriptorImpl moduleDescriptor
     ) {
         List<ActualDiagnostic> debugAnnotations = new ArrayList<>();
 
         DebugInfoUtil.markDebugAnnotations(root, bindingContext, new DebugInfoUtil.DebugInfoReporter() {
             @Override
             public void reportElementWithErrorType(@NotNull KtReferenceExpression expression) {
-                newDiagnostic(expression, DebugInfoDiagnosticFactory.ELEMENT_WITH_ERROR_TYPE);
+                newDiagnostic(expression, DebugInfoDiagnosticFactory0.ELEMENT_WITH_ERROR_TYPE);
             }
 
             @Override
             public void reportMissingUnresolved(@NotNull KtReferenceExpression expression) {
-                newDiagnostic(expression, DebugInfoDiagnosticFactory.MISSING_UNRESOLVED);
+                newDiagnostic(expression, DebugInfoDiagnosticFactory0.MISSING_UNRESOLVED);
             }
 
             @Override
             public void reportUnresolvedWithTarget(@NotNull KtReferenceExpression expression, @NotNull String target) {
-                newDiagnostic(expression, DebugInfoDiagnosticFactory.UNRESOLVED_WITH_TARGET);
+                newDiagnostic(expression, DebugInfoDiagnosticFactory0.UNRESOLVED_WITH_TARGET);
             }
 
             @Override
@@ -179,28 +220,32 @@ public class CheckerTestUtil {
                 }
 
                 if (markDynamicCalls) {
-                    newDiagnostic(element, DebugInfoDiagnosticFactory.DYNAMIC);
+                    newDiagnostic(element, DebugInfoDiagnosticFactory0.DYNAMIC);
                 }
             }
 
-            private void newDiagnostic(KtElement element, DebugInfoDiagnosticFactory factory) {
+            private void newDiagnostic(KtElement element, DebugInfoDiagnosticFactory0 factory) {
                 debugAnnotations.add(new ActualDiagnostic(new DebugInfoDiagnostic(element, factory), platform, withNewInference));
             }
         });
 
         // this code is used in tests and in internal action 'copy current file as diagnostic test'
         //noinspection unchecked
-        for (Pair<? extends WritableSlice<? extends KtExpression, ?>, DebugInfoDiagnosticFactory> factory : Arrays.asList(
-                TuplesKt.to(BindingContext.SMARTCAST, DebugInfoDiagnosticFactory.SMARTCAST),
-                TuplesKt.to(BindingContext.IMPLICIT_RECEIVER_SMARTCAST, DebugInfoDiagnosticFactory.IMPLICIT_RECEIVER_SMARTCAST),
-                TuplesKt.to(BindingContext.SMARTCAST_NULL, DebugInfoDiagnosticFactory.CONSTANT),
-                TuplesKt.to(BindingContext.LEAKING_THIS, DebugInfoDiagnosticFactory.LEAKING_THIS),
-                TuplesKt.to(BindingContext.IMPLICIT_EXHAUSTIVE_WHEN, DebugInfoDiagnosticFactory.IMPLICIT_EXHAUSTIVE)
-        )) {
+
+        List<Pair<? extends WritableSlice<? extends KtExpression, ?>, DebugInfoDiagnosticFactory>> factoryList = Arrays.asList(
+                TuplesKt.to(BindingContext.EXPRESSION_TYPE_INFO, DebugInfoDiagnosticFactory1.EXPRESSION_TYPE),
+                TuplesKt.to(BindingContext.SMARTCAST, DebugInfoDiagnosticFactory0.SMARTCAST),
+                TuplesKt.to(BindingContext.IMPLICIT_RECEIVER_SMARTCAST, DebugInfoDiagnosticFactory0.IMPLICIT_RECEIVER_SMARTCAST),
+                TuplesKt.to(BindingContext.SMARTCAST_NULL, DebugInfoDiagnosticFactory0.CONSTANT),
+                TuplesKt.to(BindingContext.LEAKING_THIS, DebugInfoDiagnosticFactory0.LEAKING_THIS),
+                TuplesKt.to(BindingContext.IMPLICIT_EXHAUSTIVE_WHEN, DebugInfoDiagnosticFactory0.IMPLICIT_EXHAUSTIVE)
+        );
+
+        for (Pair<? extends WritableSlice<? extends KtExpression, ?>, ? extends DebugInfoDiagnosticFactory> factory : factoryList) {
             for (KtExpression expression : bindingContext.getSliceContents(factory.getFirst()).keySet()) {
                 if (PsiTreeUtil.isAncestor(root, expression, false)) {
-                    debugAnnotations.add(new ActualDiagnostic(new DebugInfoDiagnostic(expression, factory.getSecond()), platform,
-                                                              withNewInference));
+                    Diagnostic diagnostic = factory.getSecond().createDiagnostic(expression, bindingContext, dataFlowValueFactory, languageVersionSettings, moduleDescriptor);
+                    debugAnnotations.add(new ActualDiagnostic(diagnostic, platform, withNewInference));
                 }
             }
         }
@@ -266,8 +311,7 @@ public class CheckerTestUtil {
                         currentActual = safeAdvance(actualDiagnostics);
                     }
                 }
-            }
-            else {
+            } else {
                 //noinspection ConstantConditions
                 assert (currentActual != null);
 
@@ -322,8 +366,13 @@ public class CheckerTestUtil {
             }
         }
 
-        for (TextDiagnostic unexpectedDiagnostic : actualDiagnostics.values()) {
-            callbacks.unexpectedDiagnostic(unexpectedDiagnostic, actualStart, actualEnd);
+        for (AbstractTestDiagnostic unexpectedDiagnostic : actualDiagnostics.keySet()) {
+            TextDiagnostic textDiagnostic = actualDiagnostics.get(unexpectedDiagnostic);
+
+            if (hasExplicitDefinitionOnlyOption(unexpectedDiagnostic))
+                continue;
+
+            callbacks.unexpectedDiagnostic(textDiagnostic, actualStart, actualEnd);
         }
     }
 
@@ -354,6 +403,9 @@ public class CheckerTestUtil {
 
     private static void unexpectedDiagnostics(ActualDiagnosticDescriptor descriptor, DiagnosticDiffCallbacks callbacks) {
         for (AbstractTestDiagnostic diagnostic : descriptor.diagnostics) {
+            if (hasExplicitDefinitionOnlyOption(diagnostic))
+                continue;
+
             callbacks.unexpectedDiagnostic(TextDiagnostic.asTextDiagnostic(diagnostic), descriptor.getStart(), descriptor.getEnd());
         }
     }
@@ -399,6 +451,13 @@ public class CheckerTestUtil {
         return matcher.replaceAll("");
     }
 
+    private static boolean hasExplicitDefinitionOnlyOption(AbstractTestDiagnostic diagnostic) {
+        if (!(diagnostic instanceof ActualDiagnostic))
+            return false;
+        DiagnosticFactory factory = ((ActualDiagnostic) diagnostic).diagnostic.getFactory();
+        return factory instanceof DebugInfoDiagnosticFactory && ((DebugInfoDiagnosticFactory)factory).getWithExplicitDefinitionOnly();
+    }
+
     public static StringBuffer addDiagnosticMarkersToText(@NotNull PsiFile psiFile, @NotNull Collection<ActualDiagnostic> diagnostics) {
         return addDiagnosticMarkersToText(psiFile, diagnostics, Collections.emptyMap(), PsiElement::getText, Collections.emptyList(), false);
     }
@@ -432,11 +491,11 @@ public class CheckerTestUtil {
                 opened.pop();
             }
             while (currentDescriptor != null && i == currentDescriptor.start) {
-                openDiagnosticsString(result, currentDescriptor, diagnosticToExpectedDiagnostic, withNewInferenceDirective);
-                if (currentDescriptor.getEnd() == i) {
+                boolean isSkip = openDiagnosticsString(result, currentDescriptor, diagnosticToExpectedDiagnostic, withNewInferenceDirective);
+
+                if (currentDescriptor.getEnd() == i && !isSkip) {
                     closeDiagnosticString(result);
-                }
-                else {
+                } else if (!isSkip) {
                     opened.push(currentDescriptor);
                 }
                 if (iterator.hasNext()) {
@@ -452,8 +511,10 @@ public class CheckerTestUtil {
         if (currentDescriptor != null) {
             assert currentDescriptor.start == text.length();
             assert currentDescriptor.end == text.length();
-            openDiagnosticsString(result, currentDescriptor, diagnosticToExpectedDiagnostic, withNewInferenceDirective);
-            opened.push(currentDescriptor);
+            boolean isSkip = openDiagnosticsString(result, currentDescriptor, diagnosticToExpectedDiagnostic, withNewInferenceDirective);
+
+            if (!isSkip)
+                opened.push(currentDescriptor);
         }
 
         while (!opened.isEmpty() && text.length() == opened.peek().end) {
@@ -466,51 +527,55 @@ public class CheckerTestUtil {
         return result;
     }
 
-    private static void openDiagnosticsString(
+    private static boolean openDiagnosticsString(
             StringBuffer result,
             AbstractDiagnosticDescriptor currentDescriptor,
             Map<AbstractTestDiagnostic, TextDiagnostic> diagnosticToExpectedDiagnostic,
             boolean withNewInferenceDirective
     ) {
-        result.append("<!");
+        boolean isSkip = true;
+        List<String> diagnosticsAsText = new ArrayList<>();
+
         if (currentDescriptor instanceof TextDiagnosticDescriptor) {
-            TextDiagnostic diagnostic = ((TextDiagnosticDescriptor) currentDescriptor).getTextDiagnostic();
-            result.append(diagnostic.asString());
-        }
-        else if (currentDescriptor instanceof ActualDiagnosticDescriptor) {
+            diagnosticsAsText.add(((TextDiagnosticDescriptor) currentDescriptor).getTextDiagnostic().asString());
+        } else if (currentDescriptor instanceof ActualDiagnosticDescriptor) {
             List<AbstractTestDiagnostic> diagnostics = ((ActualDiagnosticDescriptor) currentDescriptor).getDiagnostics();
-            for (Iterator<AbstractTestDiagnostic> iterator = diagnostics.iterator(); iterator.hasNext(); ) {
-                AbstractTestDiagnostic diagnostic = iterator.next();
+
+            for (AbstractTestDiagnostic diagnostic : diagnostics) {
                 TextDiagnostic expectedDiagnostic = diagnosticToExpectedDiagnostic.get(diagnostic);
                 if (expectedDiagnostic != null) {
                     TextDiagnostic actualTextDiagnostic = TextDiagnostic.asTextDiagnostic(diagnostic);
                     if (compareTextDiagnostic(expectedDiagnostic, actualTextDiagnostic)) {
-                        result.append(expectedDiagnostic.asString());
+                        diagnosticsAsText.add(expectedDiagnostic.asString());
+                    } else {
+                        diagnosticsAsText.add(actualTextDiagnostic.asString());
                     }
-                    else {
-                        result.append(actualTextDiagnostic.asString());
-                    }
-                }
-                else {
+                } else if (!hasExplicitDefinitionOnlyOption(diagnostic)) {
+                    StringBuilder diagnosticText = new StringBuilder();
                     if (withNewInferenceDirective && diagnostic.getInferenceCompatibility().abbreviation != null) {
-                        result.append(diagnostic.getInferenceCompatibility().abbreviation);
-                        result.append(";");
+                        diagnosticText.append(diagnostic.getInferenceCompatibility().abbreviation);
+                        diagnosticText.append(";");
                     }
                     if (diagnostic.getPlatform() != null) {
-                        result.append(diagnostic.getPlatform());
-                        result.append(":");
+                        diagnosticText.append(diagnostic.getPlatform());
+                        diagnosticText.append(":");
                     }
-                    result.append(diagnostic.getName());
-                }
-                if (iterator.hasNext()) {
-                    result.append(", ");
+                    diagnosticsAsText.add(diagnosticText + diagnostic.getName());
                 }
             }
-        }
-        else {
+        } else {
             throw new IllegalStateException("Unknown diagnostic descriptor: " + currentDescriptor);
         }
-        result.append("!>");
+
+        if (diagnosticsAsText.size() != 0) {
+            Collections.sort(diagnosticsAsText);
+            result.append("<!");
+            result.append(String.join(", ", diagnosticsAsText));
+            result.append("!>");
+            isSkip = false;
+        }
+
+        return isSkip;
     }
 
     private static void closeDiagnosticString(StringBuffer result) {
@@ -582,25 +647,63 @@ public class CheckerTestUtil {
         }
     }
 
-    public static class DebugInfoDiagnosticFactory extends DiagnosticFactory<DebugInfoDiagnostic> {
-        public static final DebugInfoDiagnosticFactory SMARTCAST = new DebugInfoDiagnosticFactory("SMARTCAST", Severity.INFO);
-        public static final DebugInfoDiagnosticFactory IMPLICIT_RECEIVER_SMARTCAST = new DebugInfoDiagnosticFactory("IMPLICIT_RECEIVER_SMARTCAST", Severity.INFO);
-        public static final DebugInfoDiagnosticFactory CONSTANT = new DebugInfoDiagnosticFactory("CONSTANT", Severity.INFO);
-        public static final DebugInfoDiagnosticFactory LEAKING_THIS = new DebugInfoDiagnosticFactory("LEAKING_THIS");
-        public static final DebugInfoDiagnosticFactory IMPLICIT_EXHAUSTIVE = new DebugInfoDiagnosticFactory("IMPLICIT_EXHAUSTIVE", Severity.INFO);
-        public static final DebugInfoDiagnosticFactory ELEMENT_WITH_ERROR_TYPE = new DebugInfoDiagnosticFactory("ELEMENT_WITH_ERROR_TYPE");
-        public static final DebugInfoDiagnosticFactory UNRESOLVED_WITH_TARGET = new DebugInfoDiagnosticFactory("UNRESOLVED_WITH_TARGET");
-        public static final DebugInfoDiagnosticFactory MISSING_UNRESOLVED = new DebugInfoDiagnosticFactory("MISSING_UNRESOLVED");
-        public static final DebugInfoDiagnosticFactory DYNAMIC = new DebugInfoDiagnosticFactory("DYNAMIC", Severity.INFO);
+    interface DebugInfoDiagnosticFactory {
+        boolean getWithExplicitDefinitionOnly();
+
+        Diagnostic createDiagnostic(
+                KtExpression expression,
+                BindingContext bindingContext,
+                DataFlowValueFactory dataFlowValueFactory,
+                LanguageVersionSettings languageVersionSettings,
+                ModuleDescriptorImpl moduleDescriptor
+        );
+    }
+
+    public static class DebugInfoDiagnosticFactory0 extends DiagnosticFactory0<PsiElement> implements DebugInfoDiagnosticFactory {
+        public static final DebugInfoDiagnosticFactory0 SMARTCAST = new DebugInfoDiagnosticFactory0("SMARTCAST", Severity.INFO);
+        public static final DebugInfoDiagnosticFactory0
+                IMPLICIT_RECEIVER_SMARTCAST = new DebugInfoDiagnosticFactory0("IMPLICIT_RECEIVER_SMARTCAST", Severity.INFO);
+        public static final DebugInfoDiagnosticFactory0 CONSTANT = new DebugInfoDiagnosticFactory0("CONSTANT", Severity.INFO);
+        public static final DebugInfoDiagnosticFactory0 LEAKING_THIS = new DebugInfoDiagnosticFactory0("LEAKING_THIS");
+        public static final DebugInfoDiagnosticFactory0
+                IMPLICIT_EXHAUSTIVE = new DebugInfoDiagnosticFactory0("IMPLICIT_EXHAUSTIVE", Severity.INFO);
+        public static final DebugInfoDiagnosticFactory0 ELEMENT_WITH_ERROR_TYPE = new DebugInfoDiagnosticFactory0("ELEMENT_WITH_ERROR_TYPE");
+        public static final DebugInfoDiagnosticFactory0 UNRESOLVED_WITH_TARGET = new DebugInfoDiagnosticFactory0("UNRESOLVED_WITH_TARGET");
+        public static final DebugInfoDiagnosticFactory0 MISSING_UNRESOLVED = new DebugInfoDiagnosticFactory0("MISSING_UNRESOLVED");
+        public static final DebugInfoDiagnosticFactory0 DYNAMIC = new DebugInfoDiagnosticFactory0("DYNAMIC", Severity.INFO);
 
         private final String name;
+        private final boolean withExplicitDefinitionOnly;
 
-        private DebugInfoDiagnosticFactory(String name, Severity severity) {
-            super(severity);
-            this.name = name;
+        @Override
+        public Diagnostic createDiagnostic(
+                KtExpression expression,
+                BindingContext bindingContext,
+                DataFlowValueFactory dataFlowValueFactory,
+                LanguageVersionSettings languageVersionSettings,
+                ModuleDescriptorImpl moduleDescriptor
+        ) {
+            return new DebugInfoDiagnostic(expression, this);
         }
 
-        private DebugInfoDiagnosticFactory(String name) {
+        @Override
+        public boolean getWithExplicitDefinitionOnly() {
+            return withExplicitDefinitionOnly;
+        }
+
+        private DebugInfoDiagnosticFactory0(String name, Severity severity) {
+            super(severity, PositioningStrategies.DEFAULT);
+            this.name = name;
+            this.withExplicitDefinitionOnly = false;
+        }
+
+        private DebugInfoDiagnosticFactory0(String name, Severity severity, boolean withExplicitDefinitionOnly) {
+            super(severity, PositioningStrategies.DEFAULT);
+            this.name = name;
+            this.withExplicitDefinitionOnly = withExplicitDefinitionOnly;
+        }
+
+        private DebugInfoDiagnosticFactory0(String name) {
             this(name, Severity.ERROR);
         }
 
@@ -611,8 +714,61 @@ public class CheckerTestUtil {
         }
     }
 
+    public static class DebugInfoDiagnosticFactory1 extends DiagnosticFactory1<PsiElement, String> implements DebugInfoDiagnosticFactory {
+        public static final DebugInfoDiagnosticFactory1 EXPRESSION_TYPE =
+                DebugInfoDiagnosticFactory1.create("EXPRESSION_TYPE", Severity.INFO, true);
+
+        final private String name;
+        final private Boolean withExplicitDefinitionOnly;
+
+        @Override
+        public Diagnostic createDiagnostic(
+                KtExpression expression,
+                BindingContext bindingContext,
+                DataFlowValueFactory dataFlowValueFactory,
+                LanguageVersionSettings languageVersionSettings,
+                ModuleDescriptorImpl moduleDescriptor
+        ) {
+            return this.on(
+                    expression,
+                    "\"" + Renderers.renderExpressionType(expression, bindingContext, dataFlowValueFactory, languageVersionSettings, moduleDescriptor) + "\""
+            );
+        }
+
+        @NotNull
+        @Override
+        public String getName() {
+            return "DEBUG_INFO_" + name;
+        }
+
+        @Override
+        public boolean getWithExplicitDefinitionOnly() {
+            return withExplicitDefinitionOnly;
+        }
+
+        protected DebugInfoDiagnosticFactory1(String name, Severity severity) {
+            super(severity, PositioningStrategies.DEFAULT);
+            this.name = name;
+            this.withExplicitDefinitionOnly = false;
+        }
+
+        protected DebugInfoDiagnosticFactory1(String name, Severity severity, boolean withExplicitDefinitionOnly) {
+            super(severity, PositioningStrategies.DEFAULT);
+            this.name = name;
+            this.withExplicitDefinitionOnly = withExplicitDefinitionOnly;
+        }
+
+        public static DebugInfoDiagnosticFactory1 create(String name, Severity severity) {
+            return new DebugInfoDiagnosticFactory1(name, severity);
+        }
+
+        public static DebugInfoDiagnosticFactory1 create(String name, Severity severity, boolean withExplicitDefinitionOnly) {
+            return new DebugInfoDiagnosticFactory1(name, severity, withExplicitDefinitionOnly);
+        }
+    }
+
     public static class DebugInfoDiagnostic extends AbstractDiagnosticForTests {
-        public DebugInfoDiagnostic(@NotNull KtElement element, @NotNull DebugInfoDiagnosticFactory factory) {
+        public DebugInfoDiagnostic(@NotNull KtElement element, @NotNull DiagnosticFactory factory) {
             super(element, factory);
         }
     }
@@ -729,7 +885,7 @@ public class CheckerTestUtil {
         }
     }
 
-    public interface AbstractTestDiagnostic {
+    public interface AbstractTestDiagnostic extends Comparable<AbstractTestDiagnostic> {
         String getName();
 
         String getPlatform();
@@ -737,12 +893,20 @@ public class CheckerTestUtil {
         TextDiagnostic.InferenceCompatibility getInferenceCompatibility();
 
         void enhanceInferenceCompatibility(TextDiagnostic.InferenceCompatibility inferenceCompatibility);
+
+        @Override
+        int compareTo(@NotNull AbstractTestDiagnostic diagnostic);
     }
 
     public static class ActualDiagnostic implements AbstractTestDiagnostic {
         public final Diagnostic diagnostic;
         public final String platform;
         public TextDiagnostic.InferenceCompatibility inferenceCompatibility;
+
+        @Override
+        public int compareTo(@NotNull AbstractTestDiagnostic diagnostic) {
+            return getName().compareTo(diagnostic.getName());
+        }
 
         ActualDiagnostic(@NotNull Diagnostic diagnostic, @Nullable String platform, boolean withNewInference) {
             this.diagnostic = diagnostic;
@@ -819,6 +983,11 @@ public class CheckerTestUtil {
             public boolean isCompatible(InferenceCompatibility other) {
                 return this == other || this == ALL || other == ALL;
             }
+        }
+
+        @Override
+        public int compareTo(@NotNull AbstractTestDiagnostic diagnostic) {
+            return getName().compareTo(diagnostic.getName());
         }
 
         @NotNull

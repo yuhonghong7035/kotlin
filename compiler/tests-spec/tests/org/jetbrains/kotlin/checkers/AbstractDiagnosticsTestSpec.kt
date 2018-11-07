@@ -5,6 +5,9 @@
 
 package org.jetbrains.kotlin.checkers
 
+import com.intellij.rt.execution.junit.FileComparisonFailure
+import org.jetbrains.kotlin.TestExceptionsComparator
+import org.jetbrains.kotlin.TestsCompilerError
 import org.jetbrains.kotlin.TestExceptionsComparator
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
@@ -106,7 +109,7 @@ abstract class AbstractDiagnosticsTestSpec : AbstractDiagnosticsTest() {
             return@l Pair(testCasesWithSamePosition.all { it.value.unexpectedBehavior }, testCasesWithSamePosition.keys.toSet())
         }
 
-        TestExceptionsComparator(testDataFile).runAndCompareWithExpected(checkUnexpectedBehaviour) {
+        TestExceptionsComparator(testDataFile).runAndCompareWithExpected(checkUnexpectedBehaviour, true) {
             super.analyzeAndCheck(testDataFile, files)
         }
     }

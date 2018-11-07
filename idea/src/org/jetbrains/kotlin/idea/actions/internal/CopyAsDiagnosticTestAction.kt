@@ -21,6 +21,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import org.jetbrains.kotlin.checkers.CheckerTestUtil
+import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.config.LanguageVersionSettingsImpl
 import org.jetbrains.kotlin.idea.caches.resolve.*
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.*
@@ -35,7 +37,14 @@ class CopyAsDiagnosticTestAction : AnAction() {
         val bindingContext = (psiFile as KtFile).analyzeWithContent()
 
         val diagnostics = CheckerTestUtil.getDiagnosticsIncludingSyntaxErrors(
-            bindingContext, psiFile, false, null, null, false
+            bindingContext,
+            psiFile,
+            false,
+            null,
+            null,
+            false,
+            LanguageVersionSettingsImpl.DEFAULT,
+            null
         )
         val result = CheckerTestUtil.addDiagnosticMarkersToText(psiFile, diagnostics).toString()
 
