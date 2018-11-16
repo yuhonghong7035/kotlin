@@ -265,7 +265,7 @@ object KotlinToJVMBytecodeCompiler {
         }
     }
 
-    internal fun compileAndExecuteScript(environment: KotlinCoreEnvironment, scriptArgs: List<String>): ExitCode {
+    fun compileAndExecuteScript(environment: KotlinCoreEnvironment, scriptArgs: List<String>): ExitCode {
         val scriptClass = compileScript(environment) ?: return ExitCode.COMPILATION_ERROR
 
         try {
