@@ -48,6 +48,11 @@ sourceSets {
             srcDir 'test'
         }
     }
+    stressTest {
+        kotlin {
+            srcDir 'stressTest'
+        }
+    }
     java9 {
         java {
             srcDir 'java9'
@@ -59,6 +64,7 @@ configurations {
     commonSources
     coroutinesExperimentalTestCompile.extendsFrom(testCompile)
     coroutinesExperimentalMigrationTestCompile.extendsFrom(coroutinesExperimentalTestCompile)
+    stressTestCompile.extendsFrom(testCompile)
 }
 
 dependencies {
@@ -238,8 +244,12 @@ compileTestKotlin {
     }
 }
 
-test {
-    if (project.hasProperty("kotlin.stdlib.test.long.sequences")) {
-        systemProperty("kotlin.stdlib.test.long.sequences", "true")
-    }
+task stressTest(type: Test, dependsOn: stressTestClasses) {
+    group = "verification"
+    testClassesDirs = sourceSets.stressTest.output.classesDirs
+    classpath = sourceSets.stressTest.runtimeClasspath
+}
+
+if (project.hasProperty("kotlin.stdlib.test.long.sequences")) {
+    check.dependsOn(stressTest)
 }
