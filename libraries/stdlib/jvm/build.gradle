@@ -48,9 +48,9 @@ sourceSets {
             srcDir 'test'
         }
     }
-    stressTest {
+    longRunningTest {
         kotlin {
-            srcDir 'stressTest'
+            srcDir 'testLongRunning'
         }
     }
     java9 {
@@ -64,7 +64,7 @@ configurations {
     commonSources
     coroutinesExperimentalTestCompile.extendsFrom(testCompile)
     coroutinesExperimentalMigrationTestCompile.extendsFrom(coroutinesExperimentalTestCompile)
-    stressTestCompile.extendsFrom(testCompile)
+    longRunningTestCompile.extendsFrom(testCompile)
 }
 
 dependencies {
@@ -244,12 +244,12 @@ compileTestKotlin {
     }
 }
 
-task stressTest(type: Test, dependsOn: stressTestClasses) {
+task longRunningTest(type: Test, dependsOn: longRunningTestClasses) {
     group = "verification"
-    testClassesDirs = sourceSets.stressTest.output.classesDirs
-    classpath = sourceSets.stressTest.runtimeClasspath
+    testClassesDirs = sourceSets.longRunningTest.output.classesDirs
+    classpath = sourceSets.longRunningTest.runtimeClasspath
 }
 
-if (project.hasProperty("kotlin.stdlib.test.long.sequences")) {
-    check.dependsOn(stressTest)
+if (project.hasProperty("kotlin.stdlib.test.long.running")) {
+    check.dependsOn(longRunningTest)
 }
