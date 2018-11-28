@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.idea.inspections.coroutines
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.inspections.collections.AbstractCallChainChecker
 import org.jetbrains.kotlin.idea.inspections.collections.SimplifyCallChainFix
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -15,6 +16,7 @@ import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.psi.qualifiedExpressionVisitor
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.calls.model.ArgumentMatch
 import org.jetbrains.kotlin.resolve.calls.model.DefaultValueArgument
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
@@ -29,8 +31,8 @@ class RedundantAsyncInspection : AbstractCallChainChecker() {
             for ((parameterDescriptor, valueArgument) in firstResolvedCall.valueArguments) {
                 val default = valueArgument is DefaultValueArgument
                 when (parameterDescriptor.name.asString()) {
-                    "context" -> defaultContext = default
-                    "start" -> defaultStart = default
+                    contextArgumentName -> defaultContext = default
+                    startArgumentName -> defaultStart = default
                 }
             }
             true
@@ -45,12 +47,11 @@ class RedundantAsyncInspection : AbstractCallChainChecker() {
             val context = scopeExpression.analyze(BodyResolveMode.PARTIAL)
             val scopeDescriptor = (scopeExpression as? KtNameReferenceExpression)?.let { context[BindingContext.REFERENCE_TARGET, it] }
             if (scopeDescriptor?.fqNameSafe?.toString() != globalScope) {
-                // Temporary forbid cases with explicit non-global scope
-                return null
+                conversion = conversion.withArgument("${scopeExpression.text}.coroutineContext")
             }
         }
 
-        if (defaultContext!! && defaultStart!!) {
+        if (conversion.additionalArgument == null && defaultContext!! && defaultStart!!) {
             conversion = conversion.withArgument(
                 if (conversion === conversions[0]) {
                     defaultAsyncArgument
@@ -65,13 +66,35 @@ class RedundantAsyncInspection : AbstractCallChainChecker() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean) =
         qualifiedExpressionVisitor(fun(expression) {
             val conversion = generateConversion(expression) ?: return
+            val contextArgument = conversion.additionalArgument
             val descriptor = holder.manager.createProblemDescriptor(
                 expression,
                 expression.firstCalleeExpression()!!.textRange.shiftRight(-expression.startOffset),
                 "Redundant 'async' call may be reduced to '${conversion.replacement}'",
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 isOnTheFly,
-                SimplifyCallChainFix(conversion, removeFirstReceiver = true)
+                SimplifyCallChainFix(conversion, removeFirstReceiver = true) { callExpression ->
+                    if (contextArgument != null) {
+                        val call = callExpression.resolveToCall()
+                        if (call != null) {
+                            for (argument in callExpression.valueArguments) {
+                                val mapping = call.getArgumentMapping(argument) as? ArgumentMatch ?: continue
+                                if (mapping.valueParameter.name.asString() == contextArgumentName) {
+                                    val name = argument.getArgumentName()?.asName
+                                    val expressionText = contextArgument + " + " + argument.getArgumentExpression()!!.text
+                                    argument.replace(
+                                        if (name == null) {
+                                            createArgument(expressionText)
+                                        } else {
+                                            createArgument("$name = $expressionText")
+                                        }
+                                    )
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
             )
             holder.registerProblem(descriptor)
         })
@@ -93,6 +116,10 @@ class RedundantAsyncInspection : AbstractCallChainChecker() {
         )
 
         private const val globalScope = "kotlinx.coroutines.GlobalScope"
+
+        private const val contextArgumentName = "context"
+
+        private const val startArgumentName = "start"
 
         private const val defaultAsyncArgument = "$COROUTINE_PACKAGE.Dispatchers.Default"
 
