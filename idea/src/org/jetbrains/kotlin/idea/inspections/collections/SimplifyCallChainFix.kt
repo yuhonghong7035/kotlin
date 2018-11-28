@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.PsiChildRange
 
-class SimplifyCallChainFix(private val newCallText: String) : LocalQuickFix {
+class SimplifyCallChainFix(private val newCallText: String, private val removeFirstReceiver: Boolean = false) : LocalQuickFix {
     private val shortenedText = newCallText.split("(").joinToString(separator = "(") {
         it.substringAfterLast(".")
     }
@@ -34,17 +34,18 @@ class SimplifyCallChainFix(private val newCallText: String) : LocalQuickFix {
 
     override fun getFamilyName() = name
 
-    private fun apply(secondQualifiedExpression: KtQualifiedExpression) {
+    fun apply(secondQualifiedExpression: KtQualifiedExpression) {
         val factory = KtPsiFactory(secondQualifiedExpression)
         val firstExpression = secondQualifiedExpression.receiverExpression
 
-        val operationSign = when (firstExpression) {
+        val operationSign = if (removeFirstReceiver) "" else when (firstExpression) {
             is KtSafeQualifiedExpression -> "?."
             is KtQualifiedExpression -> "."
             else -> ""
         }
 
-        val receiverExpression = (firstExpression as? KtQualifiedExpression)?.receiverExpression
+        val receiverExpressionOrEmpty =
+            (firstExpression as? KtQualifiedExpression)?.receiverExpression?.takeIf { !removeFirstReceiver } ?: ""
 
         val firstCallExpression = AbstractCallChainChecker.getCallExpression(firstExpression) ?: return
         val secondCallExpression = secondQualifiedExpression.selectorExpression as? KtCallExpression ?: return
@@ -82,7 +83,7 @@ class SimplifyCallChainFix(private val newCallText: String) : LocalQuickFix {
 
         val newQualifiedExpression = if (lambdaExpression != null) factory.createExpressionByPattern(
             "$0$1$2 $3 $4",
-            receiverExpression ?: "",
+            receiverExpressionOrEmpty,
             operationSign,
             newCallText,
             argumentsText,
@@ -90,7 +91,7 @@ class SimplifyCallChainFix(private val newCallText: String) : LocalQuickFix {
         )
         else factory.createExpressionByPattern(
             "$0$1$2 $3",
-            receiverExpression ?: "",
+            receiverExpressionOrEmpty,
             operationSign,
             newCallText,
             argumentsText
