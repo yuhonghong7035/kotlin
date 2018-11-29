@@ -78,6 +78,7 @@ import static org.jetbrains.kotlin.codegen.TestUtilsKt.extractUrls;
 import static org.jetbrains.kotlin.test.KotlinTestUtils.getAnnotationsJar;
 import static org.jetbrains.kotlin.test.clientserver.TestProcessServerKt.getBoxMethodOrNull;
 import static org.jetbrains.kotlin.test.clientserver.TestProcessServerKt.getGeneratedClass;
+import static org.jetbrains.kotlin.utils.ExceptionUtilsKt.rethrow;
 
 public abstract class CodegenTestCase extends KtUsefulTestCase {
     private static final String DEFAULT_TEST_FILE_NAME = "a_test";
@@ -463,7 +464,7 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
             return result;
         }
         catch (MalformedURLException e) {
-            throw ExceptionUtilsKt.rethrow(e);
+            throw rethrow(e);
         }
     }
 
@@ -629,7 +630,7 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
             return (Class<? extends Annotation>) initializedClassLoader.loadClass(fqName);
         }
         catch (ClassNotFoundException e) {
-            throw ExceptionUtilsKt.rethrow(e);
+            throw rethrow(e);
         }
     }
 
@@ -702,7 +703,7 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
                 kotlinOut = KotlinTestUtils.tmpDir(toString());
             }
             catch (IOException e) {
-                throw ExceptionUtilsKt.rethrow(e);
+                throw rethrow(e);
             }
 
             OutputUtilsKt.writeAllTo(classFileFactory, kotlinOut);
@@ -827,7 +828,7 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
                             javaFilesDir.set(KotlinTestUtils.tmpDir("java-files"));
                         }
                         catch (IOException e) {
-                            throw ExceptionUtilsKt.rethrow(e);
+                            throw rethrow(e);
                         }
                     }
                     writeSourceFile(fileName, text, javaFilesDir.get());

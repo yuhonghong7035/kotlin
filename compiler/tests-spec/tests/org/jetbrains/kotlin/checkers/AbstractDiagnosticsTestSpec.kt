@@ -28,6 +28,7 @@ abstract class AbstractDiagnosticsTestSpec : AbstractDiagnosticsTest() {
         // map of pairs: source helper filename - target helper filename
         private val directives = mapOf(
             "WITH_BASIC_TYPES" to "basicTypes.kt",
+            "WITH_CLASSES_WITH_PROJECTIONS" to "classesWithProjections.kt",
             "WITH_CLASSES" to "classes.kt",
             "WITH_ENUM_CLASSES" to "enumClasses.kt",
             "WITH_SEALED_CLASSES" to "sealedClasses.kt",
@@ -122,6 +123,15 @@ abstract class AbstractDiagnosticsTestSpec : AbstractDiagnosticsTest() {
         moduleBindings: Map<TestModule?, BindingContext>,
         languageVersionSettingsByModule: Map<TestModule?, LanguageVersionSettings>
     ) {
+        fun <K> select(vararg x: K): K = x.getOrElse(0) {  }
+
+        fun main() {
+            val t = select()
+
+            println(t.inv())
+        }
+
+
         val diagnosticValidator = try {
             DiagnosticTestTypeValidator(testFiles, testDataFile, specTest)
         } catch (e: SpecTestValidationException) {
