@@ -44,11 +44,10 @@ class AnnotationConverter(private val converter: Converter) {
         val modifierList = owner.modifierList
         val annotations = modifierList?.annotations?.filter { it.qualifiedName !in annotationsToRemove }
 
-        var convertedAnnotations: List<Annotation> = if (annotations != null && annotations.isNotEmpty()) {
+        val convertedAnnotations = (if (annotations != null && annotations.isNotEmpty()) {
             val newLines = if (!modifierList.isInSingleLine()) {
                 true
-            }
-            else {
+            } else {
                 var child: PsiElement? = modifierList
                 while (true) {
                     child = child!!.nextSibling
@@ -57,16 +56,15 @@ class AnnotationConverter(private val converter: Converter) {
                 if (child is PsiWhiteSpace) !child.isInSingleLine() else false
             }
 
-            annotations.mapNotNull { convertAnnotation(it, newLineAfter = newLines, target = target) }
-        }
-        else {
-            listOf()
-        }
+            annotations.mapNotNullTo(mutableListOf()) { convertAnnotation(it, newLineAfter = newLines, target = target) }
+        } else {
+            mutableListOf<Annotation>()
+        })
 
         if (owner is PsiDocCommentOwner) {
             val deprecatedAnnotation = convertDeprecatedJavadocTag(owner, target)
             if (deprecatedAnnotation != null) {
-                convertedAnnotations = convertedAnnotations.filter { it.name.name != deprecatedAnnotation.name.name }
+                convertedAnnotations.removeIf { it.name.name == deprecatedAnnotation.name.name }
                 convertedAnnotations += deprecatedAnnotation
             }
         }

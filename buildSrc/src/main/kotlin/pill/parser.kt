@@ -175,7 +175,7 @@ private fun ParserContext.parseModules(project: Project, excludedProjects: List<
 
         val mainRoot = roots.first()
 
-        var dependencies = parseDependencies(project, mainRoot.forTests)
+        val dependencies = parseDependencies(project, mainRoot.forTests).toMutableList()
         if (productionContentRoots.isNotEmpty() && mainRoot.forTests) {
             val productionModuleDependency = PDependency.Module(project.name + ".src")
             dependencies += POrderRoot(productionModuleDependency, Scope.COMPILE, true)

@@ -94,7 +94,7 @@ fun captureFromArguments(
         val newProjection = newArguments[index]
 
         if (oldProjection.projectionKind == Variance.INVARIANT) continue
-        var upperBounds = type.constructor.parameters[index].upperBounds.map {
+        val upperBounds = type.constructor.parameters[index].upperBounds.mapTo(mutableListOf()) {
             NewKotlinTypeChecker.transformToNewType(substitutor.safeSubstitute(it, Variance.INVARIANT).unwrap())
         }
         if (!oldProjection.isStarProjection && oldProjection.projectionKind == Variance.OUT_VARIANCE) {

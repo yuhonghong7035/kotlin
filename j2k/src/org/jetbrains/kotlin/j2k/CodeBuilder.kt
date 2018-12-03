@@ -146,7 +146,7 @@ class CodeBuilder(private val topElement: PsiElement?, private var docConverter:
 
         val notInsideElements = HashSet<PsiElement>()
         var prefix = Prefix.Empty
-        var postfix = emptyList<PsiElement>()
+        val postfix = mutableListOf<PsiElement>()
         for ((prototype, inheritance) in element.prototypes!!) {
             assert(prototype !is PsiComment)
             assert(prototype !is PsiWhiteSpace)
