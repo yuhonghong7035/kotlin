@@ -1,0 +1,10 @@
+<html>
+<body>
+This inspection reports suspend functions with <b>CoroutineScope</b> receiver (either extensions or members of derived class).
+
+<b>CoroutineScope</b> should never be used as suspend function receiver.
+This can lead to ambiguities while using <b>coroutineContext</b>,
+either directly or via <b>async</b>, <b>launch</b>, <b>withContext</b> or <b>coroutineScope</b>.
+Please use <b>coroutineScope</b> higher-order function instead if you need access to <b>CoroutineScope</b> members.
+</body>
+</html>

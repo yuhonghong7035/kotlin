@@ -1,0 +1,6 @@
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+
+interface MyCoroutineScope : CoroutineScope {
+    fun foo()
+}

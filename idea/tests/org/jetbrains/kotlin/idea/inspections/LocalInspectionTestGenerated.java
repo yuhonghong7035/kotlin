@@ -2171,6 +2171,64 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
                 runTest("idea/testData/inspectionsLocal/coroutines/redundantRunCatching/simple.kt");
             }
         }
+
+        @TestMetadata("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class SuspendFunctionOnCoroutineScope extends AbstractLocalInspectionTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
+            }
+
+            @TestMetadata("abstractFun.kt")
+            public void testAbstractFun() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/abstractFun.kt");
+            }
+
+            public void testAllFilesPresentInSuspendFunctionOnCoroutineScope() throws Exception {
+                KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope"), Pattern.compile("^([\\w\\-_]+)\\.(kt|kts)$"), TargetBackend.ANY, true);
+            }
+
+            @TestMetadata("body.kt")
+            public void testBody() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/body.kt");
+            }
+
+            @TestMetadata("convertReceiver.kt")
+            public void testConvertReceiver() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/convertReceiver.kt");
+            }
+
+            @TestMetadata("interface.kt")
+            public void testInterface() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/interface.kt");
+            }
+
+            @TestMetadata("lots.kt")
+            public void testLots() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/lots.kt");
+            }
+
+            @TestMetadata("member.kt")
+            public void testMember() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/member.kt");
+            }
+
+            @TestMetadata("object.kt")
+            public void testObject() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/object.kt");
+            }
+
+            @TestMetadata("simple.kt")
+            public void testSimple() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/simple.kt");
+            }
+
+            @TestMetadata("useSite.kt")
+            public void testUseSite() throws Exception {
+                runTest("idea/testData/inspectionsLocal/coroutines/suspendFunctionOnCoroutineScope/useSite.kt");
+            }
+        }
     }
 
     @TestMetadata("idea/testData/inspectionsLocal/delegationToVarProperty")

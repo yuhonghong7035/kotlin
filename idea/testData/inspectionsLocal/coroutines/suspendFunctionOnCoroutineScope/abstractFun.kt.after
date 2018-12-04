@@ -1,0 +1,6 @@
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+
+abstract class MyCoroutineScope : CoroutineScope {
+    abstract fun <caret>foo()
+}
