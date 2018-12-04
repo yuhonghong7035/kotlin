@@ -82,17 +82,22 @@ class LazyScriptDescriptor(
                     Name.identifier(it),
                     type,
                     this.thisAsReceiverParameter,
-                    this
+                    this,
+                    expression.toSourceElement()
                 )
             }
         } else null
     }
 
     fun resultFieldName(): String? {
+        val scriptPriority = scriptInfo.script.getUserData(ScriptPriorities.PRIORITY_KEY)
+        if (scriptPriority != null) {
+            return "res$scriptPriority"
+        }
         val scriptName = name.asString()
         return if (scriptName.startsWith("Line_")) {
             "res${scriptName.split("_")[1]}"
-        } else null
+        } else "\$\$result"
     }
 
     private val sourceElement = scriptInfo.script.toSourceElement()

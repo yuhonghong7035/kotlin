@@ -53,7 +53,7 @@ class LazyScriptClassMemberScope(
             )
             var paramsIndexBase = baseConstructorDescriptor.valueParameters.lastIndex + 1
             val syntheticParameters =
-                (implicitReceiversParamTypes + environmentVarsParamTypes).mapNotNull { param: Pair<String, KotlinType> ->
+                (implicitReceiversParamTypes + environmentVarsParamTypes).map { param: Pair<String, KotlinType> ->
                     ValueParameterDescriptorImpl(
                         constructorDescriptor,
                         null,

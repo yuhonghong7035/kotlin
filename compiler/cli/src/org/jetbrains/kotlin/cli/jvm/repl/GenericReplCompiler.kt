@@ -27,15 +27,8 @@ import org.jetbrains.kotlin.codegen.CompilationErrorHandler
 import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.psi.KtBlockExpression
-import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtScript
-import org.jetbrains.kotlin.psi.KtScriptInitializer
-import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyScriptDescriptor
-import org.jetbrains.kotlin.resolve.lazy.descriptors.script.ReplResultPropertyDescriptor
 import org.jetbrains.kotlin.script.KotlinScriptDefinition
 import org.jetbrains.kotlin.script.ScriptDependenciesProvider
 import java.io.File

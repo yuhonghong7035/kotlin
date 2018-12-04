@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.resolve.lazy.descriptors.script
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.PropertyDescriptorImpl
-import org.jetbrains.kotlin.descriptors.impl.PropertyGetterDescriptorImpl
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyScriptDescriptor
 import org.jetbrains.kotlin.types.KotlinType
@@ -17,7 +16,8 @@ class ReplResultPropertyDescriptor(
     name: Name,
     kotlinType: KotlinType,
     receiver: ReceiverParameterDescriptor?,
-    script: LazyScriptDescriptor
+    script: LazyScriptDescriptor,
+    source: SourceElement
 ) : PropertyDescriptorImpl(
     script,
     null,
@@ -27,7 +27,7 @@ class ReplResultPropertyDescriptor(
     false,
     name,
     CallableMemberDescriptor.Kind.SYNTHESIZED,
-    SourceElement.NO_SOURCE,
+    source,
     /* lateInit = */ false, /* isConst = */ false, /* isExpect = */ false, /* isActual = */ false, /* isExternal = */ false,
     /* isDelegated = */ false
 ) {
