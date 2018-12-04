@@ -241,15 +241,14 @@ class JpsCompatiblePlugin : Plugin<Project> {
         junitConfiguration.apply {
             getOrCreateChild("option", "name" to "WORKING_DIRECTORY").setAttribute("value", "file://\$PROJECT_DIR\$")
             getOrCreateChild("option", "name" to "VM_PARAMETERS").also { vmParams ->
-                val options = vmParams.getAttributeValue("value", "")
+                var options = vmParams.getAttributeValue("value", "")
                     .split(' ')
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
-                    .toMutableList()
 
                 fun addOrReplaceOptionValue(name: String, value: Any?) {
-                    options.removeIf { it.startsWith("-D$name=") }
-                    if (value != null) options += "-D$name=$value"
+                    val optionsWithoutNewValue = options.filter { !it.startsWith("-D$name=") }
+                    options = if (value == null) optionsWithoutNewValue else (optionsWithoutNewValue + listOf("-D$name=$value"))
                 }
 
                 val robolectricClasspath = project.rootProject
