@@ -70,18 +70,15 @@ class KotlinGradleNativeMultiplatformModuleBuilder : KotlinGradleAbstractMultipl
     override fun buildMultiPlatformPart(): String {
         return """
             kotlin {
-                targets {
-                    // For ARM, preset should be changed to presets.iosArm32 or presets.iosArm64
-                    // For Linux, preset should be changed to e.g. presets.linuxX64
-                    // For MacOS, preset should be changed to e.g. presets.macosX64
-                    fromPreset(presets.$nativePresetName, '$nativeTargetName')
-
-                    configure([$nativeTargetName]) {
-                        // Comment to generate Kotlin/Native library (KLIB) instead of executable file:
-                        compilations.main.outputKinds 'EXECUTABLE'
-                        // Change to specify fully qualified name of your application's entry point:
-                        compilations.main.entryPoint 'sample.main'
-                    }
+                // For ARM, should be changed to iosArm32 or iosArm64
+                // For Linux, should be changed to e.g. linuxX64
+                // For MacOS, should be changed to e.g. macosX64
+                // For Windows, should be changed to e.g. mingwX64
+                $nativePresetName("$nativeTargetName") {
+                    // Comment to generate Kotlin/Native library (KLIB) instead of executable file:
+                    compilations["main"].outputKinds("executable")
+                    // Change to specify fully qualified name of your application's entry point:
+                    compilations.main.entryPoint 'sample.main'
                 }
                 sourceSets {
                     // Note: To enable common source sets please comment out 'kotlin.import.noCommonSourceSets' property
