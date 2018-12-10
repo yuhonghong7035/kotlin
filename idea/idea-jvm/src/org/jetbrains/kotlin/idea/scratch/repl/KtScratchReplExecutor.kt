@@ -40,6 +40,8 @@ class KtScratchReplExecutor(file: ScratchFile) : ScratchExecutor(file) {
     private lateinit var osProcessHandler: OSProcessHandler
 
     override fun execute() {
+        handlers.forEach { it.onStart(file) }
+
         val module = file.getModule()
         val cmdLine = KotlinConsoleKeeper.createCommandLine(module)
 
