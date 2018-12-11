@@ -25,8 +25,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.psi.KtFile
+import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
+import kotlin.concurrent.withLock
 import kotlin.concurrent.write
 
 interface ScriptDefinitionProvider {
@@ -113,7 +115,7 @@ abstract class LazyScriptDefinitionProvider : ScriptDefinitionProvider {
 
 private class CachingSequence<T>(from: Sequence<T>) : Sequence<T> {
 
-    private val lock = ReentrantReadWriteLock()
+    private val lock = ReentrantLock()
     private val sequenceIterator = from.iterator()
     private val cache = arrayListOf<T>()
 
@@ -121,9 +123,9 @@ private class CachingSequence<T>(from: Sequence<T>) : Sequence<T> {
 
         private var cacheCursor = 0
 
-        override fun hasNext(): Boolean = lock.read { cacheCursor < cache.size || sequenceIterator.hasNext() }
+        override fun hasNext(): Boolean = lock.withLock { cacheCursor < cache.size || sequenceIterator.hasNext() }
 
-        override fun next(): T = lock.write {
+        override fun next(): T = lock.withLock {
             if (cacheCursor < cache.size) cache[cacheCursor++]
             else sequenceIterator.next().also { cache.add(it) }
         }
