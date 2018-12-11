@@ -16,20 +16,20 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.FunctionLoweringPass
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.IrSetVariable
-import org.jetbrains.kotlin.ir.expressions.IrValueAccessExpression
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
 import org.jetbrains.kotlin.ir.symbols.IrVariableSymbol
 import org.jetbrains.kotlin.ir.util.dump
 import org.jetbrains.kotlin.ir.visitors.*
 import java.util.*
+
+object CoroutineIntrinsicLambdaOrigin : IrStatementOriginImpl("Coroutine intrinsic lambda")
 
 class SharedVariablesLowering(val context: BackendContext) : FunctionLoweringPass {
     override fun lower(irFunction: IrFunction) {
@@ -47,33 +47,48 @@ class SharedVariablesLowering(val context: BackendContext) : FunctionLoweringPas
         }
 
         private fun collectSharedVariables() {
-            irFunction.accept(object : IrElementVisitor<Unit, IrDeclarationParent> {
-                val relevantVars = HashSet<IrVariable>()
+            irFunction.acceptVoid(object : IrElementVisitorVoid {
+                val relevantVars = mutableSetOf<IrVariable>()
+                val functionsVariables = mutableListOf<MutableSet<IrVariable>>()
 
-                override fun visitElement(element: IrElement, data: IrDeclarationParent) {
-                    element.acceptChildren(this, data)
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
                 }
 
-                override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclarationParent) =
-                    super.visitDeclaration(declaration, declaration as? IrDeclarationParent ?: data)
+                override fun visitFunction(declaration: IrFunction) {
+                    functionsVariables.push(mutableSetOf())
+                    declaration.acceptChildrenVoid(this)
+                    functionsVariables.pop()
+                }
 
-                override fun visitVariable(declaration: IrVariable, data: IrDeclarationParent) {
-                    declaration.acceptChildren(this, data)
+                override fun visitContainerExpression(expression: IrContainerExpression) {
+                    if (expression !is IrReturnableBlock || expression.origin != CoroutineIntrinsicLambdaOrigin)
+                        super.visitContainerExpression(expression)
+                    else {
+                        functionsVariables.push(mutableSetOf())
+                        expression.acceptChildrenVoid(this)
+                        functionsVariables.pop()
+                    }
+                }
+
+                override fun visitVariable(declaration: IrVariable) {
+                    declaration.acceptChildrenVoid(this)
 
                     if (declaration.isVar) {
                         relevantVars.add(declaration)
+                        functionsVariables.peek()!!.add(declaration)
                     }
                 }
 
-                override fun visitValueAccess(expression: IrValueAccessExpression, data: IrDeclarationParent) {
-                    expression.acceptChildren(this, data)
+                override fun visitVariableAccess(expression: IrValueAccessExpression) {
+                    expression.acceptChildrenVoid(this)
 
                     val value = expression.symbol.owner
-                    if (value in relevantVars && (value as IrVariable).parent != data) {
-                        sharedVariables.add(value)
+                    if (value in relevantVars && !functionsVariables.peek()!!.contains(value)) {
+                        sharedVariables.add(value as IrVariable)
                     }
                 }
-            }, irFunction)
+            })
         }
 
         private fun rewriteSharedVariables() {
