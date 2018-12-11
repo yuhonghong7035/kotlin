@@ -619,6 +619,7 @@ public class FunctionCodegen {
                     isReleaseCoroutines);
         }
 
+        Label methodEntry = null;
         Label methodEnd;
 
         int functionFakeIndex = -1;
@@ -648,14 +649,14 @@ public class FunctionCodegen {
                     functionDescriptor.getValueParameters(), isStaticMethod(context.getContextKind(), functionDescriptor)
             );
             if (context.isInlineMethodContext()) {
-                functionFakeIndex = frameMap.enterTemp(Type.INT_TYPE);
+                functionFakeIndex = newFakeTempIndex(mv, frameMap);
             }
 
             if (context instanceof InlineLambdaContext) {
-                lambdaFakeIndex = frameMap.enterTemp(Type.INT_TYPE);
+                lambdaFakeIndex = newFakeTempIndex(mv, frameMap);
             }
 
-            Label methodEntry = new Label();
+            methodEntry = new Label();
             mv.visitLabel(methodEntry);
             context.setMethodStartLabel(methodEntry);
 
@@ -707,10 +708,11 @@ public class FunctionCodegen {
 
         //TODO: it's best to move all below logic to 'generateLocalVariableTable' method
         if (context.isInlineMethodContext() && functionFakeIndex != -1) {
+            assert methodEntry != null : "methodEntry is not initialized";
             mv.visitLocalVariable(
                     JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_FUNCTION + typeMapper.mapAsmMethod(functionDescriptor).getName(),
                     Type.INT_TYPE.getDescriptor(), null,
-                    methodBegin, methodEnd,
+                    methodEntry, methodEnd,
                     functionFakeIndex);
         }
 
@@ -729,13 +731,23 @@ public class FunctionCodegen {
                         functionName = inlineArgumentDescriptor.getContainingDeclaration().getName().asString();
                     }
                 }
+                assert methodEntry != null : "methodEntry is not initialized";
                 mv.visitLocalVariable(
                         JvmAbi.LOCAL_VARIABLE_NAME_PREFIX_INLINE_ARGUMENT + lambdaOrdinal +  "$" + functionName,
                         Type.INT_TYPE.getDescriptor(), null,
-                        methodBegin, methodEnd,
+                        methodEntry, methodEnd,
                         lambdaFakeIndex);
             }
         }
+    }
+
+    private static int newFakeTempIndex(@NotNull MethodVisitor mv, FrameMap frameMap) {
+        int fakeIndex;
+        fakeIndex = frameMap.enterTemp(Type.INT_TYPE);
+        InstructionAdapter adapter = new InstructionAdapter(mv);
+        adapter.iconst(0);
+        adapter.store(fakeIndex, Type.INT_TYPE);
+        return fakeIndex;
     }
 
     private static boolean isCompatibilityStubInDefaultImpls(
