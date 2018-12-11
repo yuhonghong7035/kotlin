@@ -201,6 +201,46 @@ open class KotlinPlatformImplementationPluginBase(platformName: String) : Kotlin
         }
 }
 
+internal class RunOnceAfterEvaluated(private val fn: () -> (Unit)) {
+    private var executed = false
+    private var configured = false
+    private var evaluated = false
+
+    @Synchronized
+    private fun execute() {
+        println("RunOnceAfterEvaluated - execute $executed $evaluated $configured")
+        if (!executed) {
+            println("RunOnceAfterEvaluated - EXECUTING $executed $evaluated $configured")
+            fn()
+        }
+        executed = true
+    }
+
+    fun onEvaluated() {
+        println("RunOnceAfterEvaluated - onEvaluated $executed $evaluated $configured")
+        evaluated = true
+        if (configured) {
+            execute()
+        }
+    }
+
+    fun onConfigure() {
+        println("RunOnceAfterEvaluated - onConfigure $executed $evaluated $configured")
+        configured = true
+        if (evaluated) {
+            execute()
+        }
+    }
+}
+
+internal fun Project.whenEvaluated(fn: RunOnceAfterEvaluated) {
+    if (state.executed) {
+        fn.onEvaluated()
+    } else {
+        afterEvaluate { fn.onEvaluated() }
+    }
+}
+
 internal fun <T> Project.whenEvaluated(fn: Project.() -> T) {
     if (state.executed) {
         fn()

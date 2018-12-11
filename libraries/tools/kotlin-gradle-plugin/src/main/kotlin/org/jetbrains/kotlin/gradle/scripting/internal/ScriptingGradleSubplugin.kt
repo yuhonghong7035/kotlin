@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.scripting.ScriptingExtension
 import org.jetbrains.kotlin.gradle.tasks.GradleMessageCollector
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.tasks.registerTask
 import org.jetbrains.kotlin.script.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.compiler.plugin.ScriptDefinitionsFromClasspathDiscoverySource
 import kotlin.properties.Delegates
@@ -47,16 +48,16 @@ class ScriptingGradleSubplugin : Plugin<Project> {
                 project.tasks.withType(KotlinCompile::class.java) { task ->
                     if (task !is KaptGenerateStubsTask) {
                         javaPluginConvention.sourceSets.findByName(task.sourceSetName)?.let { sourceSet ->
-                            project.tasks.create(
-                                "discover${task.sourceSetName.capitalize()}ScriptsExtensions",
+                            val extensionsTask = registerTask(
+                                project, "discover${task.sourceSetName.capitalize()}ScriptsExtensions",
                                 DiscoverScriptExtensionsTask::class.java
                             ) { extensionsTask ->
                                 extensionsTask.sourceSet = sourceSet
                                 extensionsTask.discoveryClasspathConfiguration =
                                         project.configurations.findByName(getConfigurationName(task.sourceSetName))
                                 extensionsTask.kotlinCompile = task
-                                task.dependsOn(extensionsTask)
                             }
+                            task.dependsOn(extensionsTask.getTaskOrProvider())
                         }
                     }
                 }
