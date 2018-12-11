@@ -58,6 +58,11 @@ class KtScratchReplExecutor(file: ScratchFile) : ScratchExecutor(file) {
         sendCommandToProcess(":quit")
     }
 
+    override fun stop() {
+        osProcessHandler.process.destroy()
+        handlers.forEach { it.onFinish(file) }
+    }
+
     private fun sendCommandToProcess(command: String) {
         LOG.printDebugMessage("Send to REPL: ${command}")
 

@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesManager
 import org.jetbrains.kotlin.idea.highlighter.KotlinHighlightingUtil
 import org.jetbrains.kotlin.idea.scratch.actions.RunScratchAction
+import org.jetbrains.kotlin.idea.scratch.actions.ScratchCompilationSupport
 import org.jetbrains.kotlin.idea.scratch.output.InlayScratchFileRenderer
 import org.jetbrains.kotlin.idea.test.KotlinWithJdkAndRuntimeLightProjectDescriptor
 import org.jetbrains.kotlin.idea.test.PluginTestCaseBase
@@ -114,15 +115,11 @@ abstract class AbstractScratchRunActionTest : FileEditorManagerTestCase() {
         scratchPanel.setReplMode(isRepl)
         scratchPanel.setModule(myFixture.module)
 
-        val action = RunScratchAction()
-        val event = getActionEvent(scratchFile, action)
-        launchAction(event, action)
+        launchScratch(scratchFile)
 
         UIUtil.dispatchAllInvocationEvents()
 
-        val start = System.currentTimeMillis()
-        // wait until output is displayed in editor or for 1 minute
-        while (!event.presentation.isEnabled && (System.currentTimeMillis() - start) < 60000) {
+        while (ScratchCompilationSupport.isAnyInProgress()) {
             Thread.sleep(100)
         }
 
@@ -152,7 +149,10 @@ abstract class AbstractScratchRunActionTest : FileEditorManagerTestCase() {
         KotlinTestUtils.assertEqualsToFile(expectedFile, actualOutput.toString())
     }
 
-    private fun launchAction(e: TestActionEvent, action: AnAction) {
+    private fun launchScratch(scratchFile: VirtualFile) {
+        val action = RunScratchAction()
+        val e = getActionEvent(scratchFile, action)
+
         action.beforeActionPerformedUpdate(e)
         Assert.assertTrue(e.presentation.isEnabled && e.presentation.isVisible)
         action.actionPerformed(e)

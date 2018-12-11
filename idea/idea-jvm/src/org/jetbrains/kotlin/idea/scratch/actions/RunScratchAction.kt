@@ -23,11 +23,8 @@ import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.DumbService
 import com.intellij.task.ProjectTaskManager
 import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.scratch.ScratchFile
-import org.jetbrains.kotlin.idea.scratch.ScratchFileLanguageProvider
-import org.jetbrains.kotlin.idea.scratch.getScratchPanelFromSelectedEditor
+import org.jetbrains.kotlin.idea.scratch.*
 import org.jetbrains.kotlin.idea.scratch.output.ScratchOutputHandlerAdapter
-import org.jetbrains.kotlin.idea.scratch.printDebugMessage
 import org.jetbrains.kotlin.idea.scratch.LOG as log
 
 class RunScratchAction : ScratchAction(
@@ -68,11 +65,11 @@ class RunScratchAction : ScratchAction(
 
         executor.addOutputHandler(object : ScratchOutputHandlerAdapter() {
             override fun onStart(file: ScratchFile) {
-                e.presentation.isEnabled = false
+                ScratchCompilationSupport.start(file, executor)
             }
 
             override fun onFinish(file: ScratchFile) {
-                e.presentation.isEnabled = true
+                ScratchCompilationSupport.stop()
             }
         })
 
@@ -101,5 +98,22 @@ class RunScratchAction : ScratchAction(
         } else {
             executeScratch()
         }
+    }
+
+    override fun update(e: AnActionEvent) {
+        super.update(e)
+
+        e.presentation.isEnabled = !ScratchCompilationSupport.isAnyInProgress()
+
+        if (e.presentation.isEnabled) {
+            e.presentation.text = templatePresentation.text
+        } else {
+            e.presentation.text = "Other Scratch file compilation is in progress"
+        }
+
+        val project = e.project ?: return
+        val panel = getScratchPanelFromSelectedEditor(project) ?: return
+
+        e.presentation.isVisible = !ScratchCompilationSupport.isInProgress(panel.scratchFile)
     }
 }
