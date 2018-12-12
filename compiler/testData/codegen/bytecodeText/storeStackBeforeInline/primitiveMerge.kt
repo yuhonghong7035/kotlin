@@ -13,7 +13,7 @@ fun test() {
     val result = foobar(if (1 == 1) true else bar(), foo(), "OK")
 }
 
-// 7 ISTORE
+// 14 ISTORE
 // 8 ILOAD
 // 2 ASTORE
 // 7 ALOAD
