@@ -748,11 +748,9 @@ public class FunctionCodegen {
     }
 
     private static int newFakeTempIndex(@NotNull MethodVisitor mv, FrameMap frameMap) {
-        int fakeIndex;
-        fakeIndex = frameMap.enterTemp(Type.INT_TYPE);
-        InstructionAdapter adapter = new InstructionAdapter(mv);
-        adapter.iconst(0);
-        adapter.store(fakeIndex, Type.INT_TYPE);
+        int fakeIndex = frameMap.enterTemp(Type.INT_TYPE);
+        mv.visitLdcInsn(0);
+        mv.visitVarInsn(ISTORE, fakeIndex);
         return fakeIndex;
     }
 
