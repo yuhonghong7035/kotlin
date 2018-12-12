@@ -31,6 +31,7 @@ val compile by configurations  // maven plugin writes pom compile scope from com
 val libraries by configurations.creating {
     extendsFrom(compile)
 }
+val trove4jJar by configurations.creating
 
 val default by configurations
 default.extendsFrom(runtimeJar)
@@ -51,6 +52,7 @@ dependencies {
     compile(project(":kotlin-stdlib"))
     compile(project(":kotlin-script-runtime"))
     compile(project(":kotlin-reflect"))
+    compile(trove4jCoordinates)
 
     libraries(project(":kotlin-annotations-jvm"))
     libraries(
@@ -69,6 +71,8 @@ dependencies {
         fatSourcesJarContents(it)
     }
 
+    trove4jJar(intellijDep()) { includeIntellijCoreJarDependencies(project) { it.startsWith("trove4j") } }
+
     fatJarContents(project(":core:builtins", configuration = "builtins"))
     fatJarContents(commonDep("javax.inject"))
     fatJarContents(commonDep("org.jline", "jline"))
@@ -79,7 +83,11 @@ dependencies {
     fatJarContents(commonDep("org.jetbrains.kotlinx", "kotlinx-coroutines-core")) { isTransitive = false }
 
     fatJarContents(intellijCoreDep()) { includeJars("intellij-core", "java-compatibility-1.0.1") }
-    fatJarContents(intellijDep()) { includeIntellijCoreJarDependencies(project, { !(it.startsWith("jdom") || it.startsWith("log4j")) }) }
+    fatJarContents(intellijDep()) {
+        includeIntellijCoreJarDependencies(project) {
+            !(it.startsWith("jdom") || it.startsWith("log4j") || it.startsWith("trove4j"))
+        }
+    }
     fatJarContents(intellijDep()) { includeJars("jna-platform", "lz4-1.3.0") }
     fatJarContentsStripServices(intellijDep("jps-standalone")) { includeJars("jps-model") }
     fatJarContentsStripMetadata(intellijDep()) { includeJars("oro-2.0.8", "jdom", "log4j" ) }
@@ -136,10 +144,9 @@ val proguard by task<ProGuardTask> {
 
 val pack = if (shrink) proguard else packCompiler
 
-dist(
-    targetName = "$compilerBaseName.jar",
-    fromTask = pack
-)
+dist(targetName = "$compilerBaseName.jar", fromTask = pack) {
+    from(trove4jJar)
+}
 
 runtimeJarArtifactBy(pack, pack.outputs.files.singleFile) {
     name = compilerBaseName

@@ -28,6 +28,12 @@ import java.io.File
 
 private fun Project.intellijRepoDir() = File("${project.rootDir.absoluteFile}/buildSrc/prepare-deps/intellij-sdk/build/repo")
 
+val Project.trove4jVersion: String
+    get() = "1.0.20181211"
+
+val Project.trove4jCoordinates: String
+    get() = "org.jetbrains.intellij.deps:trove4j:$trove4jVersion"
+
 fun RepositoryHandler.intellijSdkRepo(project: Project): IvyArtifactRepository = ivy {
     val baseDir = project.intellijRepoDir()
     val intellijEnforceCommunitySdk = project.getBooleanProperty("intellijEnforceCommunitySdk") == true
