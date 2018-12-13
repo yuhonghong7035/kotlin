@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.config.IncrementalCompilation
 import org.jetbrains.kotlin.config.additionalArgumentsAsList
 import org.jetbrains.kotlin.daemon.client.CompileServiceSession
+import org.jetbrains.kotlin.daemon.client.KotlinCompilerDaemonClient
 import org.jetbrains.kotlin.daemon.common.*
 import org.jetbrains.kotlin.daemon.common.impls.ReportCategory
 import org.jetbrains.kotlin.daemon.common.impls.ReportSeverity
@@ -60,7 +61,7 @@ class JpsKotlinCompilerRunner {
         fun releaseCompileServiceSession() {
             _jpsCompileServiceSession?.let {
                 try {
-                    it.compileService.releaseCompileSession(it.sessionId)
+                    runBlocking { it.compileService.releaseCompileSession(it.sessionId) }
                 } catch (_: Throwable) {
                 }
             }
@@ -73,9 +74,8 @@ class JpsKotlinCompilerRunner {
             if (_jpsCompileServiceSession == null ||
                     runBlocking { _jpsCompileServiceSession!!.compileService.getDaemonOptions() } !is CompileService.CallResult.Good<DaemonOptions>
                     ) {
-                    _releaseCompileServiceSession()
-                    _jpsCompileServiceSession = newConnection()
-                }
+                releaseCompileServiceSession()
+                _jpsCompileServiceSession = newConnection()
             }
 
             return _jpsCompileServiceSession
@@ -216,7 +216,7 @@ class JpsKotlinCompilerRunner {
                         sessionId,
                         withAdditionalCompilerArgs(compilerArgs),
                         options,
-                    JpsCompilerServicesFacadeImpl(environment).toClient(),
+                        JpsCompilerServicesFacadeImpl(environment).toClient(),
                         null
                 )
             }
@@ -232,7 +232,7 @@ class JpsKotlinCompilerRunner {
 
     private fun <T> doWithDaemon(
             environment: JpsCompilerEnvironment,
-        fn: suspend (sessionId: Int, daemon: CompileServiceAsync) -> CompileService.CallResult<T>
+            fn: suspend (sessionId: Int, daemon: CompileServiceAsync) -> CompileService.CallResult<T>
     ): T? {
         log.debug("Try to connect to daemon")
         val connection = getDaemonConnection(environment)
@@ -351,7 +351,7 @@ class JpsKotlinCompilerRunner {
 
                 IncrementalCompilation.toJvmArgs(additionalJvmParams)
 
-            val clientFlagFile = KotlinCompilerDaemonClient.instantiate(Version.RMI).getOrCreateClientFlagFile(daemonOptions)
+                val clientFlagFile = KotlinCompilerDaemonClient.instantiate(Version.RMI).getOrCreateClientFlagFile(daemonOptions)
                 val sessionFlagFile = makeAutodeletingFlagFile("compiler-jps-session-", File(daemonOptions.runFilesPathOrDefault))
 
                 environment.withProgressReporter { progress ->
