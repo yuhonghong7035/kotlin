@@ -201,31 +201,33 @@ open class KotlinPlatformImplementationPluginBase(platformName: String) : Kotlin
         }
 }
 
-internal class RunOnceAfterEvaluated(private val fn: () -> (Unit)) {
+internal class RunOnceAfterEvaluated(private val name: String, private val fn: () -> (Unit)) {
     private var executed = false
     private var configured = false
     private var evaluated = false
 
     @Synchronized
     private fun execute() {
-        println("RunOnceAfterEvaluated - execute $executed $evaluated $configured")
+        println("[$name] RunOnceAfterEvaluated - execute executed=$executed evaluated=$evaluated configured=$configured")
         if (!executed) {
-            println("RunOnceAfterEvaluated - EXECUTING $executed $evaluated $configured")
+            println("[$name] RunOnceAfterEvaluated - EXECUTING executed=$executed evaluated=$evaluated configured=$configured")
             fn()
         }
         executed = true
     }
 
+    @Synchronized
     fun onEvaluated() {
-        println("RunOnceAfterEvaluated - onEvaluated $executed $evaluated $configured")
+        println("[$name] RunOnceAfterEvaluated - onEvaluated executed=$executed evaluated=$evaluated configured=$configured")
         evaluated = true
         if (configured) {
             execute()
         }
     }
 
+    @Synchronized
     fun onConfigure() {
-        println("RunOnceAfterEvaluated - onConfigure $executed $evaluated $configured")
+        println("[$name] RunOnceAfterEvaluated - onConfigure executed=$executed evaluated=$evaluated configured=$configured")
         configured = true
         if (evaluated) {
             execute()

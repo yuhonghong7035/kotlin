@@ -15,13 +15,11 @@ import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.tasks.SourceSet
 import org.gradle.util.ConfigureUtil
 import org.jetbrains.kotlin.gradle.dsl.*
+import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.plugin.sources.defaultSourceSetLanguageSettingsChecker
 import org.jetbrains.kotlin.gradle.plugin.sources.getSourceSetHierarchy
-import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
-import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
-import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
+import org.jetbrains.kotlin.gradle.tasks.*
 import org.jetbrains.kotlin.gradle.utils.addExtendsFromRelation
 import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
 import java.io.File
@@ -76,13 +74,21 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
     }
 
     open fun addSourcesToCompileTask(sourceSet: KotlinSourceSet, addAsCommonSources: Boolean) {
-        (target.project.tasks.getByName(compileKotlinTaskName) as AbstractKotlinCompile<*>).apply {
+        fun AbstractKotlinCompile<*>.configureAction() {
+            println("kotlinCompilations.addSourcesToCompileTask invoked")
             source(sourceSet.kotlin)
             sourceFilesExtensions(sourceSet.customSourceFilesExtensions)
             if (addAsCommonSources) {
                 commonSourceSet += sourceSet.kotlin
             }
         }
+        // Note! Invocation of getByName results in preliminary task instantiation. After fix of this issue the following code should be uncommented:
+//        if (useLazyTaskConfiguration) {
+//            (target.project.tasks.named(compileKotlinTaskName) as TaskProvider<AbstractKotlinCompile<*>>).configure {
+//                it.configureAction()
+//            }
+//        }
+        (target.project.tasks.getByName(compileKotlinTaskName) as AbstractKotlinCompile<*>).configureAction()
     }
 
     override fun source(sourceSet: KotlinSourceSet) {

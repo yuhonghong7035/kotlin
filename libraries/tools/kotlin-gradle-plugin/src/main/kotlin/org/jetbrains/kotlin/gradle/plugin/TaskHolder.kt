@@ -23,7 +23,7 @@ open class TaskHolder<T: Task>(val task: T?, val project: Project?) {
     }
 
     override fun toString(): String {
-        return "TaskHolder instane: [className: ${javaClass.name}, holded task: '${doGetTask().name}']"
+        return "TaskHolder instance: [className: ${javaClass.name}, holded task: '${doGetTask().name}']"
     }
 
     /**

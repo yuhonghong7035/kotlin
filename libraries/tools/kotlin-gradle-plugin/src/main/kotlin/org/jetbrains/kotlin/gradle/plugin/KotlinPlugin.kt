@@ -61,7 +61,7 @@ internal abstract class KotlinSourceSetProcessor<T : AbstractKotlinCompile<*>>(
 
     protected val sourceSetName: String = kotlinCompilation.compilationName
 
-    protected val kotlinTask: T = registerKotlinCompileTask()
+    protected val kotlinTask: TaskHolder<out T> = registerKotlinCompileTask()
 
     protected val javaSourceSet: SourceSet? = (kotlinCompilation as? KotlinWithJavaCompilation<*>)?.javaSourceSet
 
@@ -80,16 +80,16 @@ internal abstract class KotlinSourceSetProcessor<T : AbstractKotlinCompile<*>>(
             }
         }
 
-    private fun registerKotlinCompileTask(): T {
+    private fun registerKotlinCompileTask(): TaskHolder<out T> {
         val name = kotlinCompilation.compileKotlinTaskName
         logger.kotlinDebug("Creating kotlin compile task $name")
         val kotlinCompile = doRegisterTask(project, name) {
             it.description = taskDescription
             it.mapClasspath { kotlinCompilation.compileDependencyFiles }
             it.setDestinationDir { defaultKotlinDestinationDir }
+            kotlinCompilation.output.tryAddClassesDir { project.files(kotlinTask.doGetTask().destinationDir).builtBy(kotlinTask.doGetTask()) }
         }
-        kotlinCompilation.output.tryAddClassesDir { project.files(kotlinTask.destinationDir).builtBy(kotlinTask) }
-        return kotlinCompile.doGetTask()
+        return kotlinCompile
     }
 
     open fun run() {
@@ -182,35 +182,38 @@ internal class Kotlin2JvmSourceSetProcessor(
 
         ScriptingGradleSubplugin.createDiscoveryConfigurationIfNeeded(project, kotlinCompilation.compilationName)
 
-        project.afterEvaluate { project ->
+        val runOnce = RunOnceAfterEvaluated("Kotlin2JvmSourceSetProcessor.doTargetSpecificProcessing") {
+            println("Make sure this code is invoked!")
+            val kotlinTaskInstance = kotlinTask.doGetTask()
             val javaTask = javaSourceSet?.let { project.tasks.findByName(it.compileJavaTaskName) as JavaCompile }
 
             val subpluginEnvironment = SubpluginEnvironment.loadSubplugins(project, kotlinPluginVersion)
             val appliedPlugins = subpluginEnvironment.addSubpluginOptions(
-                project, kotlinTask, javaTask, null, null, kotlinCompilation
+                project, kotlinTaskInstance, javaTask, null, null, kotlinCompilation
             )
 
             appliedPlugins
-                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTask) }
+                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTaskInstance) }
                 .forEach { plugin -> kotlinCompilation.allKotlinSourceSets.forEach { sourceSet -> plugin.source(sourceSet.kotlin) } }
 
-            javaTask?.let { configureJavaTask(kotlinTask, it, logger) }
+            javaTask?.let { configureJavaTask(kotlinTaskInstance, it, logger) }
 
             var syncOutputTask: SyncOutputTask? = null
 
             if (!isSeparateClassesDirSupported && javaTask != null) {
-                syncOutputTask = registerSyncOutputTask(project, kotlinTask, javaTask, sourceSetName)
+                syncOutputTask = registerSyncOutputTask(project, kotlinTaskInstance, javaTask, sourceSetName)
             }
 
             if (project.pluginManager.hasPlugin("java-library") && sourceSetName == SourceSet.MAIN_SOURCE_SET_NAME) {
                 val (classesProviderTask, classesDirectory) = when {
-                    isSeparateClassesDirSupported -> kotlinTask.let { it to it.destinationDir }
+                    isSeparateClassesDirSupported -> kotlinTaskInstance.let { it to it.destinationDir }
                     else -> syncOutputTask!!.let { it to it.javaOutputDir }
                 }
 
                 registerKotlinOutputForJavaLibrary(classesDirectory, classesProviderTask)
             }
         }
+        project.whenEvaluated(runOnce)
     }
 
     private fun registerKotlinOutputForJavaLibrary(outputDir: File, taskDependency: Task): Boolean {
@@ -268,7 +271,7 @@ internal class Kotlin2JsSourceSetProcessor(
         tasksProvider.registerKotlinJSTask(project, taskName, kotlinCompilation, configureAction)
 
     override fun doTargetSpecificProcessing() {
-        project.tasks.findByName(kotlinCompilation.compileAllTaskName)!!.dependsOn(kotlinTask)
+        project.tasks.findByName(kotlinCompilation.compileAllTaskName)!!.dependsOn(kotlinTask.getTaskOrProvider())
 
         registerCleanSourceMapTask()
 
@@ -277,41 +280,44 @@ internal class Kotlin2JsSourceSetProcessor(
         }
 
         // outputFile can be set later during the configuration phase, get it only after the phase:
-        project.afterEvaluate { project ->
-            kotlinTask.kotlinOptions.outputFile = kotlinTask.outputFile.absolutePath
-            val outputDir = kotlinTask.outputFile.parentFile
+        val runOnce = RunOnceAfterEvaluated("Kotlin2JsSourceSetProcessor.doTargetSpecificProcessing") {
+            val kotlinTaskInstance = kotlinTask.doGetTask()
+            kotlinTaskInstance.kotlinOptions.outputFile = kotlinTaskInstance.outputFile.absolutePath
+            val outputDir = kotlinTaskInstance.outputFile.parentFile
 
             val subpluginEnvironment: SubpluginEnvironment = SubpluginEnvironment.loadSubplugins(project, kotlinPluginVersion)
             val appliedPlugins = subpluginEnvironment.addSubpluginOptions(
-                project, kotlinTask, null, null, null, kotlinCompilation
+                project, kotlinTaskInstance, null, null, null, kotlinCompilation
             )
 
             if (outputDir.isParentOf(project.rootDir))
                 throw InvalidUserDataException(
-                    "The output directory '$outputDir' (defined by outputFile of $kotlinTask) contains or " +
+                    "The output directory '$outputDir' (defined by outputFile of $kotlinTaskInstance) contains or " +
                             "matches the project root directory '${project.rootDir}'.\n" +
                             "Gradle will not be able to build the project because of the root directory lock.\n" +
                             "To fix this, consider using the default outputFile location instead of providing it explicitly."
                 )
 
-            kotlinTask.destinationDir = outputDir
+            kotlinTaskInstance.destinationDir = outputDir
 
             if (!isSeparateClassesDirSupported && kotlinCompilation is KotlinWithJavaCompilation<*>) {
-                kotlinCompilation.javaSourceSet.output.setClassesDirCompatible(kotlinTask.destinationDir)
+                kotlinCompilation.javaSourceSet.output.setClassesDirCompatible(kotlinTaskInstance.destinationDir)
             }
 
             appliedPlugins
-                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTask) }
+                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTaskInstance) }
                 .forEach { task -> kotlinCompilation.allKotlinSourceSets.forEach { sourceSet -> task.source(sourceSet.kotlin) } }
         }
+        project.whenEvaluated(runOnce)
+
     }
 
     private fun registerCleanSourceMapTask() {
         val taskName = kotlinCompilation.composeName("clean", "sourceMap")
         val task = registerTask(project, taskName, Delete::class.java) {
-            it.onlyIf { kotlinTask.kotlinOptions.sourceMap }
+            it.onlyIf { kotlinTask.doGetTask().kotlinOptions.sourceMap }
             it.delete(object : Closure<String>(this) {
-                override fun call(): String? = (kotlinTask.property("outputFile") as File).canonicalPath + ".map"
+                override fun call(): String? = (kotlinTask.doGetTask().property("outputFile") as File).canonicalPath + ".map"
             })
         }
         //TODO improve
@@ -329,21 +335,23 @@ internal class KotlinCommonSourceSetProcessor(
     kotlinCompilation = compilation
 ) {
     override fun doTargetSpecificProcessing() {
-        project.tasks.findByName(kotlinCompilation.compileAllTaskName)!!.dependsOn(kotlinTask)
+        project.tasks.findByName(kotlinCompilation.compileAllTaskName)!!.dependsOn(kotlinTask.getTaskOrProvider())
         // can be missing (e.g. in case of tests)
         if (kotlinCompilation.compilationName == KotlinCompilation.MAIN_COMPILATION_NAME) {
-            project.tasks.findByName(kotlinCompilation.target.artifactsTaskName)?.dependsOn(kotlinTask)
+            project.tasks.findByName(kotlinCompilation.target.artifactsTaskName)?.dependsOn(kotlinTask.getTaskOrProvider())
         }
 
-        project.afterEvaluate { project ->
+        val runOnce = RunOnceAfterEvaluated("KotlinCommonSourceSetProcessor.doTargetSpecificProcessing:344") {
+            val kotlinTaskInstance = kotlinTask.doGetTask()
             val subpluginEnvironment: SubpluginEnvironment = SubpluginEnvironment.loadSubplugins(project, kotlinPluginVersion)
             val appliedPlugins = subpluginEnvironment.addSubpluginOptions(
-                project, kotlinTask, null, null, null, kotlinCompilation
+                project, kotlinTaskInstance, null, null, null, kotlinCompilation
             )
             appliedPlugins
-                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTask) }
+                .flatMap { it.getSubpluginKotlinTasks(project, kotlinTaskInstance) }
                 .forEach { kotlinCompilation.allKotlinSourceSets.forEach { sourceSet -> it.source(sourceSet.kotlin) } }
         }
+        project.whenEvaluated(runOnce)
     }
 
     // protected abstract fun doRegisterTask(project: Project, taskName: String, configureAction: (T) -> (Unit)): TaskHolder<out T>

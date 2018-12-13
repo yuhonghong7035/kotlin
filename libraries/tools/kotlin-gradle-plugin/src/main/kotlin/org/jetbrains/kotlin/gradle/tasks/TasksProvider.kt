@@ -33,7 +33,8 @@ fun <T : Task> registerTask(project: Project, name: String, type: Class<T>, body
  */
 fun <T : Task> registerTask(project: Project, name: String, type: Class<T>, disableLazy: Boolean, body: (T) -> (Unit)): TaskHolder<T> {
     return if (useLazyTaskConfiguration && !disableLazy) {
-        TaskProviderHolder(project.tasks.register(name, type){ with(it, body)}, name)
+        // old : TaskProviderHolder(project.tasks.register(name, type){ with(it, body)}, name)
+        TaskProviderHolder(project, name, type) { with(it, body)}
     } else {
         val result = TaskHolder(project.tasks.create(name,type), project)
         with(result.task!!, body)
@@ -84,7 +85,7 @@ internal open class KotlinTasksProvider(val targetName: String) {
     ) {
         //TODO dangerous point
         println("Configure $kotlinTaskHolder")
-        val configureAfterEvaluated = RunOnceAfterEvaluated {
+        val configureAfterEvaluated = RunOnceAfterEvaluated("TaskProvider.configure") {
             val languageSettings = project.kotlinExtension.sourceSets.findByName(compilation.defaultSourceSetName)?.languageSettings
                 ?: return@RunOnceAfterEvaluated
 
