@@ -1217,8 +1217,16 @@ public class AsmUtil {
         return JvmClassName.byFqNameWithoutInnerClasses(fqName).getInternalName();
     }
 
-    public static void putJavaLangClassInstance(@NotNull InstructionAdapter v, @NotNull Type type) {
-        if (isPrimitive(type)) {
+    public static void putJavaLangClassInstance(
+            @NotNull InstructionAdapter v,
+            @NotNull Type type,
+            @NotNull KotlinType kotlinType,
+            @NotNull GenerationState state
+    ) {
+        if (InlineClassesUtilsKt.isInlineClassType(kotlinType)) {
+            v.aconst(boxType(type, kotlinType, state));
+        }
+        else if (isPrimitive(type)) {
             v.getstatic(boxType(type).getInternalName(), "TYPE", "Ljava/lang/Class;");
         }
         else {

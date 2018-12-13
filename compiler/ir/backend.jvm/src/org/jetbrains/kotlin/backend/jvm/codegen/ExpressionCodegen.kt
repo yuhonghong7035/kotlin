@@ -1052,17 +1052,17 @@ class ExpressionCodegen(
             JavaClassProperty.generateImpl(mv, gen((classReference as IrGetClass).argument, data))
         } else {
             val classType = classReference.classType
+            val kotlinType = classType.toKotlinType()
             if (classType is CrIrType) {
-                putJavaLangClassInstance(mv, classType.type)
+                putJavaLangClassInstance(mv, classType.type, kotlinType, state)
                 return
             } else {
-                val type = classType.toKotlinType()
-                if (TypeUtils.isTypeParameter(type)) {
-                    assert(TypeUtils.isReifiedTypeParameter(type)) { "Non-reified type parameter under ::class should be rejected by type checker: " + type }
-                    putReifiedOperationMarkerIfTypeIsReifiedParameter(type, ReifiedTypeInliner.OperationKind.JAVA_CLASS, mv, this)
+                if (TypeUtils.isTypeParameter(kotlinType)) {
+                    assert(TypeUtils.isReifiedTypeParameter(kotlinType)) { "Non-reified type parameter under ::class should be rejected by type checker: " + kotlinType }
+                    putReifiedOperationMarkerIfTypeIsReifiedParameter(kotlinType, ReifiedTypeInliner.OperationKind.JAVA_CLASS, mv, this)
                 }
 
-                putJavaLangClassInstance(mv, typeMapper.mapType(type))
+                putJavaLangClassInstance(mv, typeMapper.mapType(kotlinType), kotlinType, state)
             }
         }
 
