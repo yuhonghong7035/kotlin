@@ -89,10 +89,13 @@ class PropertyReferenceCodegen(
     private val constructor = method("<init>", Type.VOID_TYPE, *constructorArgs.map { it.fieldType }.toTypedArray())
 
     override fun generateDeclaration() {
+        val visibilityFlag = AsmUtil.getVisibilityAccessFlagForClass(classDescriptor)
+        val syntheticFlag =
+            if (classDescriptor is SyntheticClassDescriptorForLambda) AsmUtil.getSyntheticAccessFlagForLambda(classDescriptor) else 0
         v.defineClass(
             element,
             state.classFileVersion,
-            ACC_FINAL or ACC_SUPER or AsmUtil.getVisibilityAccessFlagForClass(classDescriptor),
+            ACC_FINAL or ACC_SUPER or visibilityFlag or syntheticFlag,
             asmType.internalName,
             null,
             superAsmType.internalName,
