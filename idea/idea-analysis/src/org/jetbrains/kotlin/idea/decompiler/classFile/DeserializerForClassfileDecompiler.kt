@@ -36,7 +36,10 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.TargetPlatform
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
-import org.jetbrains.kotlin.serialization.deserialization.*
+import org.jetbrains.kotlin.serialization.deserialization.ClassData
+import org.jetbrains.kotlin.serialization.deserialization.ClassDataFinder
+import org.jetbrains.kotlin.serialization.deserialization.DeserializationComponents
+import org.jetbrains.kotlin.serialization.deserialization.DeserializationConfiguration
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedPackageMemberScope
 import java.io.InputStream
 
@@ -69,11 +72,12 @@ class DeserializerForClassfileDecompiler(
                 get() = true
         }
 
+
         deserializationComponents = DeserializationComponents(
                 storageManager, moduleDescriptor, configuration, classDataFinder, annotationAndConstantLoader,
                 packageFragmentProvider, ResolveEverythingToKotlinAnyLocalClassifierResolver(builtIns), LoggingErrorReporter(LOG),
                 LookupTracker.DO_NOTHING, JavaFlexibleTypeDeserializer, emptyList(), notFoundClasses,
-                ContractDeserializerImpl(configuration),
+                ContractDeserializerImpl(configuration, null),
                 extensionRegistryLite = JvmProtoBufUtil.EXTENSION_REGISTRY
         )
     }
