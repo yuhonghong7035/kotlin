@@ -13,6 +13,9 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.config.Services
 import org.jetbrains.kotlin.daemon.common.*
+import org.jetbrains.kotlin.daemon.common.impls.CompilationResultCategory
+import org.jetbrains.kotlin.daemon.common.impls.ReportCategory
+import org.jetbrains.kotlin.daemon.common.impls.ReportSeverity
 import org.jetbrains.kotlin.gradle.plugin.kotlinDebug
 import org.jetbrains.kotlin.gradle.tasks.GradleMessageCollector
 import org.jetbrains.kotlin.gradle.tasks.clearLocalStateDirectories
@@ -29,14 +32,14 @@ import java.rmi.RemoteException
 import javax.inject.Inject
 
 internal class ProjectFilesForCompilation(
-    val projectRootFile: File,
-    val clientIsAliveFlagFile: File,
-    val sessionFlagFile: File
+        val projectRootFile: File,
+        val clientIsAliveFlagFile: File,
+        val sessionFlagFile: File
 ) : Serializable {
     constructor(project: Project) : this(
-        projectRootFile = project.rootProject.projectDir,
-        clientIsAliveFlagFile = GradleCompilerRunner.getOrCreateClientFlagFile(project),
-        sessionFlagFile = GradleCompilerRunner.getOrCreateSessionFlagFile(project)
+            projectRootFile = project.rootProject.projectDir,
+            clientIsAliveFlagFile = GradleCompilerRunner.getOrCreateClientFlagFile(project),
+            sessionFlagFile = GradleCompilerRunner.getOrCreateSessionFlagFile(project)
     )
 
     companion object {
@@ -45,15 +48,15 @@ internal class ProjectFilesForCompilation(
 }
 
 internal class GradleKotlinCompilerWorkArguments(
-    val projectFiles: ProjectFilesForCompilation,
-    val compilerFullClasspath: List<File>,
-    val compilerClassName: String,
-    val compilerArgs: Array<String>,
-    val isVerbose: Boolean,
-    val incrementalCompilationEnvironment: IncrementalCompilationEnvironment?,
-    val incrementalModuleInfo: IncrementalModuleInfo?,
-    val buildFile: File?,
-    val localStateDirectories: List<File>
+        val projectFiles: ProjectFilesForCompilation,
+        val compilerFullClasspath: List<File>,
+        val compilerClassName: String,
+        val compilerArgs: Array<String>,
+        val isVerbose: Boolean,
+        val incrementalCompilationEnvironment: IncrementalCompilationEnvironment?,
+        val incrementalModuleInfo: IncrementalModuleInfo?,
+        val buildFile: File?,
+        val localStateDirectories: List<File>
 ) : Serializable {
     companion object {
         const val serialVersionUID: Long = 0
@@ -61,14 +64,14 @@ internal class GradleKotlinCompilerWorkArguments(
 }
 
 internal class GradleKotlinCompilerWork @Inject constructor(
-    /**
-     * Arguments are passed through [GradleKotlinCompilerWorkArguments],
-     * because Gradle Workers API does not support nullable arguments (https://github.com/gradle/gradle/issues/2405),
-     * and because Workers API does not support named arguments,
-     * which are useful when there are many arguments with the same type
-     * (to protect against parameters reordering bugs)
-     */
-    config: GradleKotlinCompilerWorkArguments
+        /**
+         * Arguments are passed through [GradleKotlinCompilerWorkArguments],
+         * because Gradle Workers API does not support nullable arguments (https://github.com/gradle/gradle/issues/2405),
+         * and because Workers API does not support named arguments,
+         * which are useful when there are many arguments with the same type
+         * (to protect against parameters reordering bugs)
+         */
+        config: GradleKotlinCompilerWorkArguments
 ) : Runnable {
     private val projectRootFile = config.projectFiles.projectRootFile
     private val clientIsAliveFlagFile = config.projectFiles.clientIsAliveFlagFile
@@ -83,7 +86,7 @@ internal class GradleKotlinCompilerWork @Inject constructor(
     private val localStateDirectories = config.localStateDirectories
 
     private val log: KotlinLogger =
-        SL4JKotlinLogger(LoggerFactory.getLogger("GradleKotlinCompilerWork"))
+            SL4JKotlinLogger(LoggerFactory.getLogger("GradleKotlinCompilerWork"))
     private val messageCollector = GradleMessageCollector(log)
 
     private val isIncremental: Boolean
@@ -146,19 +149,19 @@ internal class GradleKotlinCompilerWork @Inject constructor(
 
     private fun compileWithDaemon(): ExitCode? {
         val connection =
-            try {
-                GradleCompilerRunner.getDaemonConnectionImpl(
-                    clientIsAliveFlagFile,
-                    sessionFlagFile,
-                    compilerFullClasspath,
-                    messageCollector,
-                    log.isDebugEnabled
-                )
-            } catch (e: Throwable) {
-                log.warn("Caught an exception trying to connect to Kotlin Daemon")
-                e.printStackTrace()
-                null
-            }
+                try {
+                    GradleCompilerRunner.getDaemonConnectionImpl(
+                            clientIsAliveFlagFile,
+                            sessionFlagFile,
+                            compilerFullClasspath,
+                            messageCollector,
+                            log.isDebugEnabled
+                    )
+                } catch (e: Throwable) {
+                    log.warn("Caught an exception trying to connect to Kotlin Daemon")
+                    e.printStackTrace()
+                    null
+                }
         if (connection == null) {
             if (isIncremental) {
                 log.warn("Could not perform incremental compilation: $COULD_NOT_CONNECT_TO_DAEMON_MESSAGE")
@@ -168,7 +171,8 @@ internal class GradleKotlinCompilerWork @Inject constructor(
             return null
         }
 
-        val (daemon, sessionId) = connection
+        val (daemonClient, sessionId) = connection
+        val daemon = daemonClient.toRMI()
         val targetPlatform = when (compilerClassName) {
             KotlinCompilerClass.JVM -> CompileService.TargetPlatform.JVM
             KotlinCompilerClass.JS -> CompileService.TargetPlatform.JS
@@ -200,43 +204,43 @@ internal class GradleKotlinCompilerWork @Inject constructor(
     }
 
     private fun nonIncrementalCompilationWithDaemon(
-        daemon: CompileService,
-        sessionId: Int,
-        targetPlatform: CompileService.TargetPlatform
+            daemon: CompileService,
+            sessionId: Int,
+            targetPlatform: CompileService.TargetPlatform
     ): CompileService.CallResult<Int> {
         val compilationOptions = CompilationOptions(
-            compilerMode = CompilerMode.NON_INCREMENTAL_COMPILER,
-            targetPlatform = targetPlatform,
-            reportCategories = reportCategories(isVerbose),
-            reportSeverity = reportSeverity(isVerbose),
-            requestedCompilationResults = emptyArray()
+                compilerMode = CompilerMode.NON_INCREMENTAL_COMPILER,
+                targetPlatform = targetPlatform,
+                reportCategories = reportCategories(isVerbose),
+                reportSeverity = reportSeverity(isVerbose),
+                requestedCompilationResults = emptyArray()
         )
         val servicesFacade = GradleCompilerServicesFacadeImpl(log, messageCollector)
         return daemon.compile(sessionId, compilerArgs, compilationOptions, servicesFacade, compilationResults = null)
     }
 
     private fun incrementalCompilationWithDaemon(
-        daemon: CompileService,
-        sessionId: Int,
-        targetPlatform: CompileService.TargetPlatform
+            daemon: CompileService,
+            sessionId: Int,
+            targetPlatform: CompileService.TargetPlatform
     ): CompileService.CallResult<Int> {
         val icEnv = incrementalCompilationEnvironment ?: error("incrementalCompilationEnvironment is null!")
         val knownChangedFiles = icEnv.changedFiles as? ChangedFiles.Known
 
         val compilationOptions = IncrementalCompilationOptions(
-            areFileChangesKnown = knownChangedFiles != null,
-            modifiedFiles = knownChangedFiles?.modified,
-            deletedFiles = knownChangedFiles?.removed,
-            workingDir = icEnv.workingDir,
-            reportCategories = reportCategories(isVerbose),
-            reportSeverity = reportSeverity(isVerbose),
-            requestedCompilationResults = arrayOf(CompilationResultCategory.IC_COMPILE_ITERATION.code),
-            compilerMode = CompilerMode.INCREMENTAL_COMPILER,
-            targetPlatform = targetPlatform,
-            usePreciseJavaTracking = icEnv.usePreciseJavaTracking,
-            localStateDirs = localStateDirectories,
-            multiModuleICSettings = icEnv.multiModuleICSettings,
-            modulesInfo = incrementalModuleInfo!!
+                areFileChangesKnown = knownChangedFiles != null,
+                modifiedFiles = knownChangedFiles?.modified,
+                deletedFiles = knownChangedFiles?.removed,
+                workingDir = icEnv.workingDir,
+                reportCategories = reportCategories(isVerbose),
+                reportSeverity = reportSeverity(isVerbose),
+                requestedCompilationResults = arrayOf(CompilationResultCategory.IC_COMPILE_ITERATION.code),
+                compilerMode = CompilerMode.INCREMENTAL_COMPILER,
+                targetPlatform = targetPlatform,
+                usePreciseJavaTracking = icEnv.usePreciseJavaTracking,
+                localStateDirs = localStateDirectories,
+                multiModuleICSettings = icEnv.multiModuleICSettings,
+                modulesInfo = incrementalModuleInfo!!
         )
 
         log.info("Options for KOTLIN DAEMON: $compilationOptions")
@@ -246,7 +250,7 @@ internal class GradleKotlinCompilerWork @Inject constructor(
     }
 
     private fun compileOutOfProcess(): ExitCode =
-        runToolInSeparateProcess(compilerArgs, compilerClassName, compilerFullClasspath, log, loggingMessageCollector)
+            runToolInSeparateProcess(compilerArgs, compilerClassName, compilerFullClasspath, log, loggingMessageCollector)
 
     private fun compileInProcess(): ExitCode {
         val stream = ByteArrayOutputStream()
@@ -258,37 +262,37 @@ internal class GradleKotlinCompilerWork @Inject constructor(
         val compiler = Class.forName(compilerClassName, true, classLoader)
 
         val exec = compiler.getMethod(
-            "execAndOutputXml",
-            PrintStream::class.java,
-            servicesClass,
-            Array<String>::class.java
+                "execAndOutputXml",
+                PrintStream::class.java,
+                servicesClass,
+                Array<String>::class.java
         )
 
         val res = exec.invoke(compiler.newInstance(), out, emptyServices, compilerArgs)
         val exitCode = ExitCode.valueOf(res.toString())
         processCompilerOutput(
-            messageCollector,
-            OutputItemsCollectorImpl(),
-            stream,
-            exitCode
+                messageCollector,
+                OutputItemsCollectorImpl(),
+                stream,
+                exitCode
         )
         log.logFinish(IN_PROCESS_EXECUTION_STRATEGY)
         return exitCode
     }
 
     private fun reportCategories(verbose: Boolean): Array<Int> =
-        if (!verbose) {
-            arrayOf(ReportCategory.COMPILER_MESSAGE.code)
-        } else {
-            ReportCategory.values().map { it.code }.toTypedArray()
-        }
+            if (!verbose) {
+                arrayOf(ReportCategory.COMPILER_MESSAGE.code)
+            } else {
+                ReportCategory.values().map { it.code }.toTypedArray()
+            }
 
     private fun reportSeverity(verbose: Boolean): Int =
-        if (!verbose) {
-            ReportSeverity.INFO.code
-        } else {
-            ReportSeverity.DEBUG.code
-        }
+            if (!verbose) {
+                ReportSeverity.INFO.code
+            } else {
+                ReportSeverity.DEBUG.code
+            }
 
     // used only for process launching so far, but implements unused proper contract
     private val loggingMessageCollector: MessageCollector by lazy {

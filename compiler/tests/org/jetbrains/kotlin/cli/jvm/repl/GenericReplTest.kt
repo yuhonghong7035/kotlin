@@ -144,7 +144,7 @@ class GenericReplTest : KtUsefulTestCase() {
 
     private fun assertEvalUnit(repl: TestRepl, state: IReplStageState<*>, line: String) {
         val codeLine = repl.nextCodeLine(line)
-        val compileResult = runBlokcing { repl.replCompiler.compile(state, codeLine) }
+        val compileResult = runBlocking { repl.replCompiler.compile(state, codeLine) }
         val compiledClasses = compileResult as? ReplCompileResult.CompiledClasses
         TestCase.assertNotNull("Unexpected compile result: $compileResult", compiledClasses)
 
@@ -155,7 +155,7 @@ class GenericReplTest : KtUsefulTestCase() {
 
     private fun<R> assertEvalResult(repl: TestRepl, state: IReplStageState<*>, line: String, expectedResult: R) {
         val codeLine = repl.nextCodeLine(line)
-        val compileResult = repl.replCompiler.compile(state, codeLine)
+        val compileResult = runBlocking { repl.replCompiler.compile(state, codeLine) }
         val compiledClasses = compileResult as? ReplCompileResult.CompiledClasses
         TestCase.assertNotNull("Unexpected compile result: $compileResult", compiledClasses)
 

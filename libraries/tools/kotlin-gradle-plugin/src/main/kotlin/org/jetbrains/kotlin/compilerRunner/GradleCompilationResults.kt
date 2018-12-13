@@ -1,12 +1,11 @@
 package org.jetbrains.kotlin.compilerRunner
 
-import org.gradle.api.Project
+import org.jetbrains.kotlin.daemon.common.CompileIterationResult
 import org.jetbrains.kotlin.daemon.common.impls.CompilationResultCategory
 import org.jetbrains.kotlin.daemon.common.impls.CompilationResults
 import org.jetbrains.kotlin.daemon.common.impls.LoopbackNetworkInterface
 import org.jetbrains.kotlin.daemon.common.impls.SOCKET_ANY_FREE_PORT
 import org.jetbrains.kotlin.gradle.plugin.kotlinDebug
-import org.jetbrains.kotlin.daemon.report.CompileIterationResult
 import org.jetbrains.kotlin.gradle.utils.pathsAsStringRelativeTo
 import java.io.File
 import java.io.Serializable
