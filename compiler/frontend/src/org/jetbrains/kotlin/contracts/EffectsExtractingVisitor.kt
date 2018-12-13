@@ -152,9 +152,24 @@ class EffectsExtractingVisitor(
     }
 
     private fun ReceiverValue.toComputation(): Computation = when (this) {
-        is ExpressionReceiver -> extractOrGetCached(expression)
-        is ExtensionReceiver -> ESReceiver(this)
+        is ExpressionReceiver -> {
+            val value = extractOrGetCached(expression)
+            if (value !is ESDataFlowValue) {
+                value
+            } else {
+                ESDataFlowValueWithExpressionReceiver(this, value.descriptor, value.dataFlowValue)
+            }
+        }
+        is ExtensionReceiver -> ESDataFlowReceiver(this, createDataFlowValue())
         else -> UNKNOWN_COMPUTATION
+    }
+
+    private fun ExtensionReceiver.createDataFlowValue(): DataFlowValue {
+        return dataFlowValueFactory.createDataFlowValue(
+            receiverValue = this,
+            bindingContext = trace.bindingContext,
+            containingDeclarationOrModule = this.declarationDescriptor
+        )
     }
 
     private fun KtExpression.createDataFlowValue(): DataFlowValue? {
