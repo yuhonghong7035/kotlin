@@ -52,7 +52,7 @@ dependencies {
     compile(project(":kotlin-stdlib"))
     compile(project(":kotlin-script-runtime"))
     compile(project(":kotlin-reflect"))
-    compile(trove4jCoordinates)
+    compile(commonDep("org.jetbrains.intellij.deps", "trove4j"))
 
     libraries(project(":kotlin-annotations-jvm"))
     libraries(

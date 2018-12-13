@@ -9,7 +9,7 @@ dependencies {
     runtime(project(":kotlin-stdlib"))
     runtime(project(":kotlin-script-runtime"))
     runtime(project(":kotlin-reflect"))
-    runtime("org.jetbrains.intellij.deps:trove4j:1.0.20181211")
+    runtime(commonDep("org.jetbrains.intellij.deps", "trove4j"))
 }
 
 noDefaultJar()
