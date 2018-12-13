@@ -19,8 +19,10 @@ package org.jetbrains.kotlin.contracts.description.expressions
 import org.jetbrains.kotlin.contracts.description.BooleanExpression
 import org.jetbrains.kotlin.contracts.description.ContractDescriptionElement
 import org.jetbrains.kotlin.contracts.description.ContractDescriptionVisitor
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.ParameterDescriptor
+import org.jetbrains.kotlin.name.Name
 
 
 interface ContractDescriptionValue : ContractDescriptionElement {
@@ -52,6 +54,8 @@ class BooleanConstantReference(name: String) : ConstantReference(name), BooleanE
 open class VariableReference(val descriptor: ParameterDescriptor) : ContractDescriptionValue {
     override fun <R, D> accept(contractDescriptionVisitor: ContractDescriptionVisitor<R, D>, data: D) =
         contractDescriptionVisitor.visitVariableReference(this, data)
+
+    override fun toString(): String = descriptor.name.toString()
 }
 
 class BooleanVariableReference(descriptor: ParameterDescriptor) : VariableReference(descriptor), BooleanExpression {
@@ -61,12 +65,20 @@ class BooleanVariableReference(descriptor: ParameterDescriptor) : VariableRefere
 
 //------------------------------------------------------
 
-class FunctionReference(val descriptor: FunctionDescriptor) : ContractDescriptionValue {
+interface FunctionReference : ContractDescriptionValue {
+    val descriptor: FunctionDescriptor
+
     override fun <R, D> accept(contractDescriptionVisitor: ContractDescriptionVisitor<R, D>, data: D): R =
         contractDescriptionVisitor.visitFunctionReference(this, data)
+}
+
+class FunctionReferenceImpl(override val descriptor: FunctionDescriptor) : FunctionReference {
+    override fun toString(): String = descriptor.name.toString()
 }
 
 class ReceiverReference(val variableReference: VariableReference) : ContractDescriptionValue {
     override fun <R, D> accept(contractDescriptionVisitor: ContractDescriptionVisitor<R, D>, data: D): R =
         contractDescriptionVisitor.visitReceiverReference(this, data)
+
+    override fun toString(): String = "receiver of $variableReference"
 }
