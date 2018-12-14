@@ -235,11 +235,14 @@ internal class RunOnceAfterEvaluated(private val name: String, private val fn: (
     }
 }
 
-internal fun Project.whenEvaluated(fn: RunOnceAfterEvaluated) {
+internal fun Project.whenEvaluated(fn: RunOnceAfterEvaluated, task: TaskHolder<*>) {
     if (state.executed) {
         fn.onEvaluated()
     } else {
         afterEvaluate { fn.onEvaluated() }
+    }
+    task.configure {
+        fn.onConfigure()
     }
 }
 

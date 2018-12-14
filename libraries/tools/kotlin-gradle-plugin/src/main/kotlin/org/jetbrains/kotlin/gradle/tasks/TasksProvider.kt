@@ -99,7 +99,7 @@ internal open class KotlinTasksProvider(val targetName: String) {
             propertiesProvider.mapKotlinTaskProperties(it)
             configureAfterEvaluated.onConfigure()
         }
-        project.whenEvaluated(configureAfterEvaluated)
+        project.whenEvaluated(configureAfterEvaluated, kotlinTaskHolder)
     }
 
     protected open val taskToFriendTaskMapper: TaskToFriendTaskMapper =

@@ -213,7 +213,7 @@ internal class Kotlin2JvmSourceSetProcessor(
                 registerKotlinOutputForJavaLibrary(classesDirectory, classesProviderTask)
             }
         }
-        project.whenEvaluated(runOnce)
+        project.whenEvaluated(runOnce, kotlinTask)
     }
 
     private fun registerKotlinOutputForJavaLibrary(outputDir: File, taskDependency: Task): Boolean {
@@ -308,7 +308,7 @@ internal class Kotlin2JsSourceSetProcessor(
                 .flatMap { it.getSubpluginKotlinTasks(project, kotlinTaskInstance) }
                 .forEach { task -> kotlinCompilation.allKotlinSourceSets.forEach { sourceSet -> task.source(sourceSet.kotlin) } }
         }
-        project.whenEvaluated(runOnce)
+        project.whenEvaluated(runOnce, kotlinTask)
 
     }
 
@@ -351,7 +351,7 @@ internal class KotlinCommonSourceSetProcessor(
                 .flatMap { it.getSubpluginKotlinTasks(project, kotlinTaskInstance) }
                 .forEach { kotlinCompilation.allKotlinSourceSets.forEach { sourceSet -> it.source(sourceSet.kotlin) } }
         }
-        project.whenEvaluated(runOnce)
+        project.whenEvaluated(runOnce, kotlinTask)
     }
 
     // protected abstract fun doRegisterTask(project: Project, taskName: String, configureAction: (T) -> (Unit)): TaskHolder<out T>
