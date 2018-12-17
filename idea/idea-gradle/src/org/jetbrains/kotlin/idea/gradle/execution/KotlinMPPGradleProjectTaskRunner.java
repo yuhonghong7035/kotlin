@@ -7,12 +7,7 @@ package org.jetbrains.kotlin.idea.gradle.execution;
 
 import com.intellij.build.BuildViewManager;
 import com.intellij.compiler.impl.CompilerUtil;
-import com.intellij.execution.Executor;
-import com.intellij.execution.configurations.ModuleBasedConfiguration;
-import com.intellij.execution.configurations.RunConfigurationModule;
-import com.intellij.execution.configurations.RunProfile;
 import com.intellij.execution.executors.DefaultRunExecutor;
-import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.openapi.compiler.ex.CompilerPathsEx;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ProjectKeys;
@@ -22,9 +17,10 @@ import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMo
 import com.intellij.openapi.externalSystem.task.TaskCallback;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.UserDataHolderBase;
-import com.intellij.packaging.artifacts.Artifact;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.task.*;
 import com.intellij.task.impl.JpsProjectTaskRunner;
 import com.intellij.util.SmartList;
@@ -35,9 +31,12 @@ import com.intellij.util.containers.MultiMap;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.config.KotlinFacetSettings;
+import org.jetbrains.kotlin.idea.facet.KotlinFacet;
+import org.jetbrains.kotlin.platform.IdePlatform;
+import org.jetbrains.kotlin.platform.impl.CommonIdePlatformUtil;
+import org.jetbrains.kotlin.platform.impl.NativeIdePlatformUtil;
 import org.jetbrains.plugins.gradle.execution.build.CachedModuleDataFinder;
-import org.jetbrains.plugins.gradle.execution.build.GradleBuildTasksProvider;
-import org.jetbrains.plugins.gradle.execution.build.GradleExecutionEnvironmentProvider;
 import org.jetbrains.plugins.gradle.execution.build.GradleProjectTaskRunner;
 import org.jetbrains.plugins.gradle.service.project.GradleBuildSrcProjectsResolver;
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil;
@@ -49,6 +48,7 @@ import org.jetbrains.plugins.gradle.util.GradleConstants;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration.PROGRESS_LISTENER_KEY;
 import static com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.*;
@@ -56,14 +56,11 @@ import static com.intellij.openapi.util.text.StringUtil.*;
 import static org.jetbrains.plugins.gradle.execution.GradleRunnerUtil.resolveProjectPath;
 
 /**
- * TODO automatically create exploded-war task
- * task explodedWar(type: Copy) {
- * into "$buildDir/explodedWar"
- * with war
- * }
+ * This is a modified copy of {@link GradleProjectTaskRunner} that allows building Kotlin Common and Kotlin Native modules
+ * in IDEA by delegating to Gradle builder ("Delegate IDE build/run actions to gradle"). See #KT-27295, #KT-27296.
  *
- * @author Vladislav.Soroka
- * @since 5/11/2016
+ * TODO: Refactor this class to remove duplicated logic when {@link GradleProjectTaskRunner} will allow extending it to
+ * collect custom Gradle tasks. See #IDEA-204372, #KT-28880.
  */
 class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
 {
@@ -89,7 +86,6 @@ class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
         List<Module> modules = addModulesBuildTasks(taskMap.get(ModuleBuildTask.class), buildTasksMap, initScripts);
         // TODO there should be 'gradle' way to build files instead of related modules entirely
         List<Module> modulesOfFiles = addModulesBuildTasks(taskMap.get(ModuleFilesBuildTask.class), buildTasksMap, initScripts);
-        addArtifactsBuildTasks(taskMap.get(ProjectModelBuildTask.class), cleanTasksMap, buildTasksMap);
 
         // TODO send a message if nothing to build
         Set<String> rootPaths = buildTasksMap.keySet();
@@ -175,45 +171,20 @@ class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
     public boolean canRun(@NotNull ProjectTask projectTask) {
         if (!GradleSystemRunningSettings.getInstance().isUseGradleAwareMake()) return false;
         if (projectTask instanceof ModuleBuildTask) {
-            return isExternalSystemAwareModule(GradleConstants.SYSTEM_ID, ((ModuleBuildTask)projectTask).getModule());
-        }
-        if (projectTask instanceof ProjectModelBuildTask) {
-            ProjectModelBuildTask buildTask = (ProjectModelBuildTask)projectTask;
-            if (buildTask.getBuildableElement() instanceof Artifact) {
-                for (GradleBuildTasksProvider buildTasksProvider : GradleBuildTasksProvider.EP_NAME.getExtensions()) {
-                    if (buildTasksProvider.isApplicable(buildTask)) return true;
-                }
-            }
-        }
+            final ModuleBuildTask moduleBuildTask = (ModuleBuildTask) projectTask;
+            final Module module = moduleBuildTask.getModule();
 
-        if (projectTask instanceof ExecuteRunConfigurationTask) {
-            RunProfile runProfile = ((ExecuteRunConfigurationTask)projectTask).getRunProfile();
-            if (runProfile instanceof ModuleBasedConfiguration) {
-                RunConfigurationModule module = ((ModuleBasedConfiguration)runProfile).getConfigurationModule();
-                if (!isExternalSystemAwareModule(GradleConstants.SYSTEM_ID, module.getModule())) {
-                    return false;
-                }
-            }
-            for (GradleExecutionEnvironmentProvider environmentProvider : GradleExecutionEnvironmentProvider.EP_NAME.getExtensions()) {
-                if (environmentProvider.isApplicable(((ExecuteRunConfigurationTask)projectTask))) {
-                    return true;
-                }
-            }
+            if (!isExternalSystemAwareModule(GradleConstants.SYSTEM_ID, module)) return false;
+
+            // ---------------------------------------- //
+            // TODO BEGIN: Extract custom Kotlin logic. //
+            // ---------------------------------------- //
+            if (isProjectWithNativeSourceOrCommonProductionSourceModules(module.getProject())) return true;
+            // ---------------------------------------- //
+            // TODO END: Extract custom Kotlin logic.   //
+            // ---------------------------------------- //
         }
         return false;
-    }
-
-
-    @Override
-    public ExecutionEnvironment createExecutionEnvironment(@NotNull Project project,
-            @NotNull ExecuteRunConfigurationTask task,
-            @Nullable Executor executor) {
-        for (GradleExecutionEnvironmentProvider environmentProvider : GradleExecutionEnvironmentProvider.EP_NAME.getExtensions()) {
-            if (environmentProvider.isApplicable(task)) {
-                return environmentProvider.createExecutionEnvironment(project, task, executor);
-            }
-        }
-        return null;
     }
 
     private static List<Module> addModulesBuildTasks(@Nullable Collection<? extends ProjectTask> projectTasks,
@@ -272,6 +243,20 @@ class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
                 else if ("main".equals(sourceSetName) || "test".equals(sourceSetName)) {
                     buildRootTasks.add(taskPrefix + assembleTask);
                 }
+                // ---------------------------------------- //
+                // TODO BEGIN: Extract custom Kotlin logic. //
+                // ---------------------------------------- //
+                else if (isNativeSourceModule(module)) {
+                    // Add tasks for Kotlin/Native.
+                    buildRootTasks.addAll(addPrefix(findNativeGradleBuildTasks(gradleTasks, sourceSetName), taskPrefix));
+                }
+                else if (isCommonProductionSourceModule(module)) {
+                    // Add tasks for compiling metadata.
+                    buildRootTasks.addAll(addPrefix(findMetadataBuildTasks(gradleTasks, sourceSetName), taskPrefix));
+                }
+                // ---------------------------------------- //
+                // TODO END: Extract custom Kotlin logic.   //
+                // ---------------------------------------- //
             }
             else {
                 if (gradleTasks.contains("classes")) {
@@ -286,24 +271,84 @@ class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
         return affectedModules;
     }
 
-    private static void addArtifactsBuildTasks(@Nullable Collection<? extends ProjectTask> tasks,
-            @NotNull MultiMap<String, String> cleanTasksMap,
-            @NotNull MultiMap<String, String> buildTasksMap) {
-        if (ContainerUtil.isEmpty(tasks)) return;
+    // ---------------------------------------- //
+    // TODO BEGIN: Extract custom Kotlin logic. //
+    // ---------------------------------------- //
+    private static boolean isProjectWithNativeSourceOrCommonProductionSourceModules(Project project) {
+        return Arrays.stream(ModuleManager.getInstance(project).getModules()).anyMatch(
+                module -> isNativeSourceModule(module) || isCommonProductionSourceModule(module)
+        );
+    }
 
-        for (ProjectTask projectTask : tasks) {
-            if (!(projectTask instanceof ProjectModelBuildTask)) continue;
+    private static boolean isNativeSourceModule(Module module) {
+        final KotlinFacet kotlinFacet = KotlinFacet.Companion.get(module);
+        if (kotlinFacet == null) return false;
 
-            ProjectModelBuildTask projectModelBuildTask = (ProjectModelBuildTask)projectTask;
-            for (GradleBuildTasksProvider buildTasksProvider : GradleBuildTasksProvider.EP_NAME.getExtensions()) {
-                if (buildTasksProvider.isApplicable(projectModelBuildTask)) {
-                    buildTasksProvider.addBuildTasks(
-                            projectModelBuildTask,
-                            task -> cleanTasksMap.putValue(task.getLinkedExternalProjectPath(), task.getName()),
-                            task -> buildTasksMap.putValue(task.getLinkedExternalProjectPath(), task.getName())
-                    );
-                }
+        final IdePlatform platform = kotlinFacet.getConfiguration().getSettings().getPlatform();
+        if (platform == null) return false;
+
+        return NativeIdePlatformUtil.isKotlinNative(platform);
+    }
+
+    private static boolean isCommonProductionSourceModule(Module module) {
+        final KotlinFacet kotlinFacet = KotlinFacet.Companion.get(module);
+        if (kotlinFacet == null) return false;
+
+        final KotlinFacetSettings facetSettings = kotlinFacet.getConfiguration().getSettings();
+        if (facetSettings.isTestModule()) return false;
+
+        final IdePlatform platform = facetSettings.getPlatform();
+        if (platform == null) return false;
+
+        return CommonIdePlatformUtil.isCommon(platform);
+    }
+
+    private static Collection<String> findNativeGradleBuildTasks(Collection<String> gradleTasks, String sourceSetName) {
+        // First, attempt to find Kotlin/Native convention Gradle task that unites all outputType-specific build tasks.
+        final String conventionGradleTask = sourceSetName + "Binaries";
+        if (gradleTasks.contains(conventionGradleTask)) {
+            return Collections.singletonList(conventionGradleTask);
+        }
+
+        // If convention task not found, then attempt to find all appropriate build tasks for the given source set.
+        final Collection<String> linkPrefixes;
+        final String targetName;
+        if (sourceSetName.endsWith("Main")) {
+            targetName = StringUtil.substringBeforeLast(sourceSetName,"Main");
+            linkPrefixes = ContainerUtil.newArrayList("link", "linkMain");
+        }
+        else if (sourceSetName.endsWith("Test")) {
+            targetName = StringUtil.substringBeforeLast(sourceSetName,"Test");
+            linkPrefixes = Collections.singletonList("linkTest");
+        }
+        else {
+            targetName = sourceSetName;
+            linkPrefixes = Collections.singletonList("link");
+        }
+
+        return linkPrefixes.stream()
+                // get base task name (without disambiguation classifier)
+                .map(linkPrefix -> linkPrefix + capitalize(targetName))
+                // find all Gradle tasks that start with base task name
+                .flatMap(nativeTaskName -> gradleTasks.stream().filter(taskName -> taskName.startsWith(nativeTaskName)))
+                .collect(Collectors.toList());
+    }
+
+    private static Collection<String> findMetadataBuildTasks(Collection<String> gradleTasks, String sourceSetName) {
+        if ("commonMain".equals(sourceSetName)) {
+            final String metadataTaskName = "metadataMainClasses";
+            if (gradleTasks.contains(metadataTaskName)) {
+                return Collections.singletonList(metadataTaskName);
             }
         }
+
+        return Collections.emptyList();
     }
+
+    private static Collection<String> addPrefix(Collection<String> tasks, String taskPrefix) {
+        return tasks.stream().map(task -> taskPrefix + task).collect(Collectors.toList());
+    }
+    // ---------------------------------------- //
+    // TODO END: Extract custom Kotlin logic.   //
+    // ---------------------------------------- //
 }
