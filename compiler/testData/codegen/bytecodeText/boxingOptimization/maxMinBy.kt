@@ -26,6 +26,8 @@ fun box(): String {
 // -- no compareTo
 // 0 compareTo
 // -- comparisons are properly fused with conditional jumps
+// comparisons: 0 + fake inline variables: 8
+// 8 ICONST_0
 // 1 IF_ICMPGE
 // 1 IF_ICMPLE
 // 4 LCMP

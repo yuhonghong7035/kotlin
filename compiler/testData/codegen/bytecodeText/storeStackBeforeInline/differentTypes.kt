@@ -11,6 +11,7 @@ fun foo() : String {
     return foobar(1, 2L, bar(3, 4L, 5.toByte(), "6"), 7.toByte())
 }
 
+// fake inline variables occupy 7 ISTOREs.
 // 16 ISTORE
 // 13 ILOAD
 // 2 ASTORE

@@ -13,6 +13,7 @@ fun test() {
     val result = foobar(if (1 == 1) true else bar(), foo(), "OK")
 }
 
+// fake inline variables occupy 7 ISTOREs.
 // 14 ISTORE
 // 8 ILOAD
 // 2 ASTORE
