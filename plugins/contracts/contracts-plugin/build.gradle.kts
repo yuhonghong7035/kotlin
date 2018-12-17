@@ -12,7 +12,7 @@ dependencies {
     compile(project(":compiler:plugin-api"))
     compile(project(":compiler:serialization"))
     compile(project(":idea"))
-    compile(intellijCoreDep()) { includeJars("intellij-core") }
+    compile(intellijCoreDep()) { includeJars("intellij-core", "jdom") }
     compileOnly(intellijDep()) { includeJars("annotations", "trove4j", "guava", rootProject = rootProject) }
 }
 
