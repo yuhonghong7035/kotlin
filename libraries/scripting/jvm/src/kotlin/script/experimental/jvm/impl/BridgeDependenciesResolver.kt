@@ -45,11 +45,13 @@ class BridgeDependenciesResolver(
 
             val defaultImports = scriptCompilationConfiguration[ScriptCompilationConfiguration.defaultImports]?.toList() ?: emptyList()
 
-            fun ScriptCompilationConfiguration.toDependencies(classpath: List<File>): ScriptDependencies = ScriptDependencies(
-                classpath = classpath,
-                sources = this[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
-                imports = defaultImports
-            )
+            fun ScriptCompilationConfiguration.toDependencies(classpath: List<File>): ScriptDependencies =
+                ScriptDependencies(
+                    classpath = classpath,
+                    sources = this[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
+                    imports = defaultImports,
+                    scripts = this[ScriptCompilationConfiguration.importScripts].toFilesOrEmpty()
+                )
 
             val refineResults = scriptCompilationConfiguration.refineWith(
                 scriptCompilationConfiguration[ScriptCompilationConfiguration.refineConfigurationOnAnnotations]?.handler,
