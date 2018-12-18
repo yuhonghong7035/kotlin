@@ -94,7 +94,7 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
     override fun source(sourceSet: KotlinSourceSet) {
         if (kotlinSourceSets.add(sourceSet)) {
             with(target.project) {
-                whenEvaluated {
+                val runOnce = RunOnceAfterEvaluated("add source set $sourceSet") {
                     sourceSet.getSourceSetHierarchy().forEach { sourceSet ->
                         val isCommonSource =
                             CompilationSourceSetUtil.sourceSetsInMultipleCompilations(project)?.contains(sourceSet) ?: false
@@ -124,6 +124,7 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
                         }
                     }
                 }
+                runOnce.onConfigure()
             }
         }
     }
