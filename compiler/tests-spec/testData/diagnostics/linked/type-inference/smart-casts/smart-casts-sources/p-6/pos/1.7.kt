@@ -107,7 +107,7 @@ fun case_6(x: A?) {
 val x7: B? = null
 
 fun case_7() {
-    if (x7 != null || <!SENSELESS_COMPARISON!><!DEBUG_INFO_CONSTANT!>x7<!> != null<!> || <!SENSELESS_COMPARISON!><!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("kotlin.Nothing? & B?")!>x7<!> != null<!>) {
+    if (x7 != null || <!SENSELESS_COMPARISON!><!DEBUG_INFO_CONSTANT!>x7<!> != null<!> || <!SENSELESS_COMPARISON!><!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("B? & kotlin.Nothing?")!>x7<!> != null<!>) {
         <!DEBUG_INFO_EXPRESSION_TYPE("B & B?")!>x7<!>
     }
 }
@@ -169,7 +169,7 @@ fun case_12(x: E, y: E) = <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.String")!>if (x =
 
 // TESTCASE NUMBER: 13
 fun case_13(x: othertypes.A?, y: Nothing?) =
-<!DEBUG_INFO_EXPRESSION_TYPE("othertypes.A & othertypes.A")!>if (x == null || x === <!DEBUG_INFO_CONSTANT!>y<!>) {
+<!DEBUG_INFO_EXPRESSION_TYPE("othertypes.A")!>if (x == null || x === <!DEBUG_INFO_CONSTANT!>y<!>) {
     throw Exception()
 } else <!DEBUG_INFO_EXPRESSION_TYPE("othertypes.A & othertypes.A?"), DEBUG_INFO_SMARTCAST!>x<!><!>
 
@@ -329,7 +329,7 @@ var y24 = null
 
 fun case_24(a: ((() -> Unit) -> Unit)?, b: (() -> Unit)?) =
     if (a !== null && b !== null || <!DEBUG_INFO_CONSTANT!>y24<!> != a && <!DEBUG_INFO_CONSTANT!>y24<!> !== b) {
-        <!DEBUG_INFO_EXPRESSION_TYPE("\(\(\(\) -> kotlin.Unit\) -> kotlin.Unit\)? & \(\(\) -> kotlin.Unit\) -> kotlin.Unit"), DEBUG_INFO_SMARTCAST!>a<!>(<!DEBUG_INFO_EXPRESSION_TYPE("\(\) -> kotlin.Unit & \(\(\) -> kotlin.Unit\)?"), DEBUG_INFO_SMARTCAST!>b<!>)
+        <!DEBUG_INFO_EXPRESSION_TYPE("\(\(\(\) -> kotlin.Unit\) -> kotlin.Unit\)? & \(\(\) -> kotlin.Unit\) -> kotlin.Unit"), DEBUG_INFO_SMARTCAST!>a<!>(<!DEBUG_INFO_EXPRESSION_TYPE("\(\(\) -> kotlin.Unit\)? & \(\) -> kotlin.Unit"), DEBUG_INFO_SMARTCAST!>b<!>)
     } else null
 
 // TESTCASE NUMBER: 25

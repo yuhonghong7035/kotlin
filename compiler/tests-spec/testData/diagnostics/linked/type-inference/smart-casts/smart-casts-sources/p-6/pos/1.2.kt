@@ -290,7 +290,7 @@ fun case_11(b: Boolean) {
         if (z != null || b) {
 
         } else {
-            <!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("kotlin.Nothing? & case_11.<anonymous>.<no name provided>?")!>z<!>
+            <!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("case_11.<anonymous>.<no name provided>? & kotlin.Nothing?")!>z<!>
         }
     }
 }
@@ -382,7 +382,7 @@ fun case_15(a: A15.B15.C15.D15.E15.F15.G15.H15.I15?) {
     if (true && a != null || g || !g || true || !true) {
 
     } else {
-        <!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("kotlin.Nothing? & A15.B15.C15.D15.E15.F15.G15.H15.I15?")!>a<!>
+        <!DEBUG_INFO_CONSTANT, DEBUG_INFO_EXPRESSION_TYPE("A15.B15.C15.D15.E15.F15.G15.H15.I15? & kotlin.Nothing?")!>a<!>
     }
 }
 

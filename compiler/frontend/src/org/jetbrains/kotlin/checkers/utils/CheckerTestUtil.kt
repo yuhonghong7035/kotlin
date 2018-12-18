@@ -262,10 +262,19 @@ object CheckerTestUtil {
         val diagnosticNames = HashSet<String>()
 
         for (expectedDiagnostic in expectedDiagnostics) {
-            val actualDiagnosticEntry = actualDiagnostics.entries.firstOrNull { entry ->
+            var actualDiagnosticEntry = actualDiagnostics.entries.firstOrNull { entry ->
                 val actualDiagnostic = entry.value
                 expectedDiagnostic.description == actualDiagnostic.description
                         && expectedDiagnostic.inferenceCompatibility.isCompatible(actualDiagnostic.inferenceCompatibility)
+                        && expectedDiagnostic.parameters == actualDiagnostic.parameters
+            }
+
+            if (actualDiagnosticEntry == null) {
+                actualDiagnosticEntry = actualDiagnostics.entries.firstOrNull { entry ->
+                    val actualDiagnostic = entry.value
+                    expectedDiagnostic.description == actualDiagnostic.description
+                            && expectedDiagnostic.inferenceCompatibility.isCompatible(actualDiagnostic.inferenceCompatibility)
+                }
             }
 
             if (actualDiagnosticEntry == null) {

@@ -41,7 +41,7 @@ interface L3 {
 fun case_1(x: Any?) {
     if (x is Number?) {
         if (x !== null) {
-            <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Number & kotlin.Any?")!>x<!>
+            <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Number")!>x<!>
         }
     }
 }
@@ -49,7 +49,7 @@ fun case_1(x: Any?) {
 // TESTCASE NUMBER: 2
 fun case_2(x: Any?) {
     if (x is Number? && x is Int? && x != null) {
-        <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Int & kotlin.Number & kotlin.Any?")!>x<!>
+        <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Int & kotlin.Number")!>x<!>
     }
 }
 
@@ -58,7 +58,7 @@ fun case_3(x: Any?) {
     if (x is Number?) {
         if (x !== null) {
             if (x is Int?) {
-                <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Int & kotlin.Number & kotlin.Any?")!>x<!>
+                <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Int & kotlin.Number")!>x<!>
             }
         }
     }
@@ -69,7 +69,7 @@ fun case_4(x: Any?) {
     if (x != null) {
         if (x is Number) {
             if (x is Int?) {
-                <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Int & kotlin.Number & kotlin.Any?")!>x<!>
+                <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Int & kotlin.Number")!>x<!>
             }
         }
     }
@@ -255,13 +255,13 @@ fun case_15(t: Any?) {
 }
 
 // TESTCASE NUMBER: 16
-fun case_16(a: Any?, b: Int = if (a is Number? && a is Int? && a !== null) <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Int & kotlin.Number & kotlin.Any?"), DEBUG_INFO_SMARTCAST!>a<!> else 0) {
+fun case_16(a: Any?, b: Int = if (a is Number? && a is Int? && a !== null) <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Int & kotlin.Number"), DEBUG_INFO_SMARTCAST!>a<!> else 0) {
     <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any?")!>a<!>
     <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Int")!>b<!>
 }
 
 // TESTCASE NUMBER: 17
-fun case_17(a: Any?, b: Int = if (a !is Number? || a !is Int? || a == null) 0 else <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Int & kotlin.Number & kotlin.Any?"), DEBUG_INFO_SMARTCAST!>a<!>) {
+fun case_17(a: Any?, b: Int = if (a !is Number? || a !is Int? || a == null) 0 else <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any & kotlin.Any? & kotlin.Int & kotlin.Number"), DEBUG_INFO_SMARTCAST!>a<!>) {
     <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Any?")!>a<!>
     <!DEBUG_INFO_EXPRESSION_TYPE("kotlin.Int")!>b<!>
 }

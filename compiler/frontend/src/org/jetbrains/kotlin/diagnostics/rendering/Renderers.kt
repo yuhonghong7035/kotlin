@@ -709,12 +709,12 @@ object Renderers {
             DEBUG_TEXT.renderType(it)
         } ?: return "Type is unknown"
         val dataFlowValue = dataFlowValueFactory.createDataFlowValue(expression, expressionType, bindingContext, moduleDescriptor)
-        val types = mutableSetOf<KotlinType>().apply {
-            addAll(expressionTypeInfo.dataFlowInfo.getStableTypes(dataFlowValue, languageVersionSettings))
-        }
+        val types = expressionTypeInfo.dataFlowInfo.getStableTypes(dataFlowValue, languageVersionSettings)
 
         if (!types.isNullOrEmpty()) {
-            return types.map { DEBUG_TEXT.renderType(it) }.sorted().joinToString(separator = " & ") + " & $result"
+            val typesAsString = types.map { DEBUG_TEXT.renderType(it) }.toMutableSet().apply { add(result) }
+
+            return typesAsString.sorted().joinToString(separator = " & ")
         }
 
         val smartCast = bindingContext[BindingContext.SMARTCAST, expression]
