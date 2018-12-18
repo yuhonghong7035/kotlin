@@ -20,13 +20,9 @@ import kotlin.script.experimental.jvmhost.baseClassLoader
 class KJvmCompiledModule(
     generationState: GenerationState
 ) : Serializable {
-    val compilerOutputFiles: Map<String, ByteArray> = run {
-        val res = sortedMapOf<String, ByteArray>()
-        for (it in generationState.factory.asList()) {
-            res[it.relativePath] = it.asByteArray()
-        }
-        res
-    }
+    val compilerOutputFiles: Map<String, ByteArray> =
+        generationState.factory.asList()
+            .associateTo(sortedMapOf<String, ByteArray>()) { it.relativePath to it.asByteArray() }
 
     companion object {
         @JvmStatic

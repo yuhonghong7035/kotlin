@@ -176,7 +176,7 @@ class KJvmCompilerImpl(val hostConfiguration: ScriptingHostConfiguration) : KJvm
 
             KotlinCodegenFacade.compileCorrectFiles(generationState, CompilationErrorHandler.THROW_EXCEPTION)
 
-            val scriptDependenciesStack = Stack<KtScript>()
+            val scriptDependenciesStack = ArrayDeque<KtScript>()
 
             fun makeOtherScripts(script: KtScript): List<KJvmCompiledScript<*>> {
 
