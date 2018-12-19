@@ -19,8 +19,11 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootModificationTracker;
 import com.intellij.openapi.util.UserDataHolderBase;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.task.*;
 import com.intellij.task.impl.JpsProjectTaskRunner;
 import com.intellij.util.SmartList;
@@ -275,9 +278,14 @@ class KotlinMPPGradleProjectTaskRunner extends ProjectTaskRunner
     // TODO BEGIN: Extract custom Kotlin logic. //
     // ---------------------------------------- //
     private static boolean isProjectWithNativeSourceOrCommonProductionSourceModules(Project project) {
-        return Arrays.stream(ModuleManager.getInstance(project).getModules()).anyMatch(
-                module -> isNativeSourceModule(module) || isCommonProductionSourceModule(module)
-        );
+        return CachedValuesManager.getManager(project).getCachedValue(
+                project,
+                () -> new CachedValueProvider.Result<>(
+                        Arrays.stream(ModuleManager.getInstance(project).getModules()).anyMatch(
+                                module -> isNativeSourceModule(module) || isCommonProductionSourceModule(module)
+                        ),
+                        ProjectRootModificationTracker.getInstance(project)
+                ));
     }
 
     private static boolean isNativeSourceModule(Module module) {
