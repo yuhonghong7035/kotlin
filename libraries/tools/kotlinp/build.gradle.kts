@@ -7,14 +7,18 @@ plugins {
     kotlin("jvm")
 }
 
-val kotlinpAsmVersion = "7.0"
+val asmVersion = rootProject.extra["versions.jar.asm-all"] as String
 
 val shadows by configurations.creating
+
+repositories {
+    maven("https://jetbrains.bintray.com/intellij-third-party-dependencies/")
+}
 
 dependencies {
     compileOnly(project(":kotlinx-metadata"))
     compileOnly(project(":kotlinx-metadata-jvm"))
-    compile("org.ow2.asm:asm:$kotlinpAsmVersion")
+    compile("org.jetbrains.intellij.deps:asm-all:$asmVersion")
 
     testCompileOnly(project(":kotlinx-metadata"))
     testCompileOnly(project(":kotlinx-metadata-jvm"))
@@ -24,7 +28,7 @@ dependencies {
     testRuntime(project(":kotlinx-metadata-jvm", configuration = "runtime"))
 
     shadows(project(":kotlinx-metadata-jvm", configuration = "runtime"))
-    shadows("org.ow2.asm:asm:$kotlinpAsmVersion")
+    shadows("org.jetbrains.intellij.deps:asm-all:$asmVersion")
 }
 
 sourceSets {
